@@ -1,4 +1,4 @@
-name := "naivechain-scala"
+name := "cynical-chain"
 
 version := "1"
 

@@ -1,20 +1,20 @@
 version: '2'
 services:
     node1: 
-        image: naivechain-scala:1
+        image: cynical-chain:1
         ports:
             - "9000:9000"
             
     node2:
-        image: naivechain-scala:1
+        image: cynical-chain:1
         ports:
             - "9001:9000"
     node3:
-        image: naivechain-scala:1
+        image: cynical-chain:1
         ports:
             - "9002:9000"
     node4:
-        image: naivechain-scala:1
+        image: cynical-chain:1
         ports:
             - "9003:9000"
 

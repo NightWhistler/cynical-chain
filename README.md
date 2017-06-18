@@ -1,9 +1,9 @@
-Naivechain implementation in Scala
+Cynical block-chain implementation in Scala
 ==================================
 
-This is a very loose Scala port of [naivechain]( https://github.com/lhartikk/naivechain ), which also takes some inspiration from [legion](https://github.com/aviaviavi/legion).
+The name is a bit on the pun, since I forked this project off my previous naivechain-scala project.
 
-It is mostly meant as an exercise for me to get a better grasp of how blockchains work, and at the same time sharpen my Scala coding and testing skills a bit.
+There were naivechain is meant to be a simple as possible, cynical-chain tries to actually be useful by adding proof-of-work.
 
 It uses Akka and Akka-http. Peer to peer communication between nodes is straight akka remoting, and akka-http is used for a simple rest interface.
 
