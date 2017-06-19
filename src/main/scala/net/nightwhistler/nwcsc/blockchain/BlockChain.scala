@@ -17,7 +17,7 @@ import scala.util.{Failure, Success, Try}
 
 case class BlockMessage( data: String, id: String = UUID.randomUUID().toString)
 
-object GenesisBlock extends Block(0, "0", 1497359352, BlockMessage("74dd70aa-2ddb-4aa2-8f95-ffc3b5cebad1","Genesis block"), 0, "ccce7d8349cf9f5d9a9c8f9293756f584d02dfdb953361c5ee36809aa0f560b4")
+object GenesisBlock extends Block(0, "0", 1497359352, BlockMessage("74dd70aa-2ddb-4aa2-8f95-ffc3b5cebad1","Genesis block"), 0, "e9f158815e681216371253df8af80db834248bed90f2dda82ad65ef99cf777f6")
 
 case class Block(index: Long, previousHash: String, timestamp: Long, message: BlockMessage, nonse: Long, hash: String) {
   def difficulty = BigInt(hash, 16)
