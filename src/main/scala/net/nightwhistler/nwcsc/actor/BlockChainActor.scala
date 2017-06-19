@@ -2,7 +2,7 @@ package net.nightwhistler.nwcsc.actor
 
 import akka.actor.{Actor, ActorRef, ActorSelection, Props}
 import net.nightwhistler.nwcsc.actor.BlockChainActor._
-import net.nightwhistler.nwcsc.blockchain.BlockChain
+import net.nightwhistler.nwcsc.blockchain.{BlockChain, BlockMessage}
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.MessageType.ResponseBlockChain
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.PeerMessage
@@ -58,10 +58,11 @@ class BlockChainActor extends Actor with PeerToPeerCommunication {
     case GetPeers => sender() ! Peers(peers.toSeq.map(_.toSerializationFormat))
 
     case MineBlock(data) =>
-      blockChain = blockChain.addBlock(data)
-      val peerMessage = PeerMessage(ResponseBlockChain, Seq(blockChain.latestBlock))
-      broadcast(peerMessage)
-      sender() ! peerMessage
+      val blockMessage = BlockMessage(data)
+      sender() ! blockMessage
+
+      val newChain = blockChain.addBlock(blockMessage)
+      self ! PeerMessage(ResponseBlockChain, Seq(newChain.latestBlock))
 
     case p@PeerMessage(_,_) =>
       val replyTo = sender()

@@ -2,7 +2,7 @@ package net.nightwhistler.nwcsc.blockchain
 
 import java.lang.Integer.parseInt
 import java.math.BigInteger
-import java.util.Date
+import java.util.{Date, UUID}
 
 import com.roundeights.hasher.Implicits._
 import com.typesafe.scalalogging.Logger
@@ -14,11 +14,14 @@ import scala.util.{Failure, Success, Try}
 /**
   * Created by alex on 13-6-17.
   */
-case class Block(index: Long, previousHash: String, timestamp: Long, data: String, nonse: Long, hash: String) {
+
+case class BlockMessage( data: String, id: String = UUID.randomUUID().toString)
+
+object GenesisBlock extends Block(0, "0", 1497359352, BlockMessage("74dd70aa-2ddb-4aa2-8f95-ffc3b5cebad1","Genesis block"), 0, "ccce7d8349cf9f5d9a9c8f9293756f584d02dfdb953361c5ee36809aa0f560b4")
+
+case class Block(index: Long, previousHash: String, timestamp: Long, data: BlockMessage, nonse: Long, hash: String) {
   def difficulty = BigInt(hash, 16)
 }
-
-object GenesisBlock extends Block(0, "0", 1497359352, "Genesis block", 0, "ccce7d8349cf9f5d9a9c8f9293756f584d02dfdb953361c5ee36809aa0f560b4")
 
 object BlockChain {
 
@@ -55,8 +58,8 @@ object BlockChain {
 
   def calculateHashForBlock( block: Block ) = calculateHash(block.index, block.previousHash, block.timestamp, block.data, block.nonse)
 
-  def calculateHash(index: Long, previousHash: String, timestamp: Long, data: String, nonse: Long) =
-    s"$index:$previousHash:$timestamp:$data:$nonse".sha256.hex
+  def calculateHash(index: Long, previousHash: String, timestamp: Long, blockMessage: BlockMessage, nonse: Long) =
+    s"$index:$previousHash:$timestamp:${blockMessage.id}:${blockMessage.data}:$nonse".sha256.hex
 
 
 }
@@ -67,7 +70,11 @@ class BlockChain private( val blocks: Seq[Block] ) {
 
   val logger = Logger("BlockChain")
 
-  def addBlock( data: String ): BlockChain = new BlockChain(generateNextBlock(data) +: blocks)
+  def addBlock( data: String ): BlockChain = addBlock(BlockMessage(data))
+
+  def addBlock( blockMessage: BlockMessage ) = new BlockChain(generateNextBlock(blockMessage) +: blocks)
+
+  def contains( blockMessage: BlockMessage ) = blocks.find( b => b.data == blockMessage ).isDefined
 
   def addBlock( block: Block ): Try[ BlockChain ] =
     if ( validBlock(block) ) Success( new BlockChain(block +: blocks ))
@@ -76,23 +83,23 @@ class BlockChain private( val blocks: Seq[Block] ) {
   def firstBlock: Block = blocks(blocks.length -1)
   def latestBlock: Block = blocks.head
 
-  def generateNextBlock( blockData: String ): Block = {
+  def generateNextBlock(blockMessage: BlockMessage ): Block = {
     val timeBefore = new Date().getTime
-    val block = generateNextBlock(blockData, 0)
+    val block = generateNextBlock(blockMessage, 0)
     logger.debug(s"Found block in ${new Date().getTime - timeBefore} ms after ${block.nonse +1} tries.")
     block
   }
 
   @tailrec
-  private def generateNextBlock( blockData: String, nonse: Long ): Block = {
-     val previousBlock = latestBlock
+  private def generateNextBlock( blockMessage: BlockMessage, nonse: Long ): Block = {
+    val previousBlock = latestBlock
     val nextIndex = previousBlock.index + 1
     val nextTimestamp = new Date().getTime() / 1000
-    val nextHash = calculateHash(nextIndex, previousBlock.hash, nextTimestamp, blockData, nonse)
+    val nextHash = calculateHash(nextIndex, previousBlock.hash, nextTimestamp, blockMessage, nonse)
 
-    val block = Block(nextIndex, previousBlock.hash, nextTimestamp, blockData, nonse, nextHash )
+    val block = Block(nextIndex, previousBlock.hash, nextTimestamp, blockMessage, nonse, nextHash )
     if (! validBlock(block) ) {
-      generateNextBlock(blockData, nonse +1)
+      generateNextBlock(blockMessage, nonse +1)
     } else block
   }
 

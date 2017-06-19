@@ -11,7 +11,7 @@ import com.typesafe.scalalogging.Logger
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.MessageType.QueryAll
 import net.nightwhistler.nwcsc.actor.BlockChainActor.{AddPeer, GetPeers, MineBlock, Peers}
-import net.nightwhistler.nwcsc.blockchain.{Block, GenesisBlock}
+import net.nightwhistler.nwcsc.blockchain.{Block, BlockMessage, GenesisBlock}
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.PeerMessage
 import org.json4s.{DefaultFormats, Formats, native}
 
@@ -38,8 +38,7 @@ trait RestInterface extends Json4sSupport {
         post {
           entity(as[String]) { data =>
             logger.info(s"Got request to add new block $data")
-            blockChainActor ! MineBlock(data)
-            complete("Mining request received.")
+            complete((blockChainActor ? MineBlock(data)).mapTo[BlockMessage])
           }
         }
     }~
