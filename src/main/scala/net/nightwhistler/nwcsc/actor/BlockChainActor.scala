@@ -11,7 +11,7 @@ import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.PeerMessage
   * Actor-based implementation of PeerToPeerCommunication
   */
 object BlockChainActor {
-  case class MineBlock( data: String )
+  case class MineBlock(blockMessage: BlockMessage )
 
   case class AddPeer( address: String )
 
@@ -29,6 +29,8 @@ class BlockChainActor extends Actor with PeerToPeerCommunication {
   override var blockChain: BlockChain = BlockChain()
 
   var peers: Set[ActorSelection] = Set.empty
+
+  var miners: Map[BlockMessage, ActorRef] = Map.empty
 
   override def receive: Receive = {
     case AddPeer(peerAddress) =>
@@ -57,12 +59,17 @@ class BlockChainActor extends Actor with PeerToPeerCommunication {
 
     case GetPeers => sender() ! Peers(peers.toSeq.map(_.toSerializationFormat))
 
-    case MineBlock(data) =>
-      val blockMessage = BlockMessage(data)
-      sender() ! blockMessage
+    case m@MineBlock(blockMessage) =>
+      if ( ! miners.contains(blockMessage) ) {
+        logger.debug(s"Got mining request: ${blockMessage}")
+        //Tell all peers to start mining
+        peers.foreach( p => p ! m)
 
-      val newChain = blockChain.addBlock(blockMessage)
-      self ! PeerMessage(ResponseBlockChain, Seq(newChain.latestBlock))
+        //Spin up a new actor to do the mining
+        val miningActor = context.actorOf(MiningActor.props)
+        miners += blockMessage -> miningActor
+        miningActor ! MiningActor.MineBlock(blockChain, blockMessage)
+      }
 
     case p@PeerMessage(_,_) =>
       val replyTo = sender()

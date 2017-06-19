@@ -3,7 +3,7 @@ package net.nightwhistler.nwcsc.actor
 import akka.actor.{ActorSystem, PoisonPill, Props}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import net.nightwhistler.nwcsc.actor.BlockChainActor._
-import net.nightwhistler.nwcsc.blockchain.{BlockMessage, GenesisBlock}
+import net.nightwhistler.nwcsc.blockchain.{BlockChain, BlockMessage, GenesisBlock}
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.MessageType.ResponseBlockChain
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.{MessageType, PeerMessage}
 import org.scalatest._
@@ -36,41 +36,41 @@ class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSp
     }
   }
 
+  it should "forward any mining requests to all peers" in new BlockChainActorTest {
+    val probe = TestProbe()
+    val blockMessage = BlockMessage("testBlock")
+    blockChainActor ! AddPeer(probe.ref.path.toStringWithoutAddress)
+    blockChainActor ! MineBlock(blockMessage)
+
+    probe.expectMsg(HandShake)
+    probe.expectMsg(GetPeers)
+    probe.expectMsg(MineBlock(blockMessage))
+  }
+
   it should "start sending broadcast to a peer after it is registered" in new BlockChainActorTest {
     val probe = TestProbe()
     blockChainActor ! AddPeer(probe.ref.path.toStringWithoutAddress)
-    blockChainActor ! MineBlock("testBlock")
+
+    val newChain = BlockChain().addBlock("NewData")
+    blockChainActor ! PeerMessage(MessageType.ResponseBlockChain, Seq(newChain.latestBlock))
 
     probe.expectMsg(HandShake)
     probe.expectMsg(GetPeers)
 
     probe.expectMsgPF(){
-      case PeerMessage(ResponseBlockChain, Seq(block)) => assert(block.message.data == "testBlock")
+      case PeerMessage(ResponseBlockChain, Seq(block)) => assert(block.message.data == "NewData")
     }
 
-    expectMsgPF() {
-      case BlockMessage(data, id) => assert( data == "testBlock")
-    }
   }
 
   it should "add us as a peer when we send a handshake" in new BlockChainActorTest {
     blockChainActor ! HandShake
-    blockChainActor ! MineBlock("testBlock")
+    val newChain = BlockChain().addBlock("NewData")
+    blockChainActor ! PeerMessage(MessageType.ResponseBlockChain, Seq(newChain.latestBlock))
 
-    //As the sender we receive the BlockMessage, and as a peer the actual block
-    expectMsgPF(){ case BlockMessage("testBlock",_) => true }
     expectMsgPF(){ case PeerMessage(ResponseBlockChain, _) => true}
   }
 
-  it should "reply with the UUID for the request when a mining request is made" in new BlockChainActorTest {
-
-    blockChainActor ! MineBlock("testBlock")
-
-    expectMsgPF() {
-      case BlockMessage(data, _) => assert(data == "testBlock")
-    }
-
-  }
 
   it should "handle a list of peers by adding them one by one" in new BlockChainActorTest {
 
