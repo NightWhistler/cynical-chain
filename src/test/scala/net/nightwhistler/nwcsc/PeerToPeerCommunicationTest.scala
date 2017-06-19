@@ -2,7 +2,7 @@ package net.nightwhistler.nwcsc
 
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.MessageType.{QueryAll, ResponseBlockChain}
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.{MessageType, PeerMessage}
-import net.nightwhistler.nwcsc.blockchain.BlockChain
+import net.nightwhistler.nwcsc.blockchain.{BlockChain, BlockMessage}
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.PeerMessage
 import org.scalamock.scalatest.MockFactory
@@ -55,7 +55,7 @@ class PeerToPeerCommunicationTest extends FlatSpec with GivenWhenThen with MockF
   "An incoming BlockChain message " should "cause the block to be attached to the current chain if it has exactly 1 new block" in new SingleBlockTest {
 
     Given("and a new chain containing an extra block")
-    val nextBlock = peerToPeerCommunication.blockChain.generateNextBlock("Some more data")
+    val nextBlock = peerToPeerCommunication.blockChain.generateNextBlock(BlockMessage("Some more data"))
     val oldBlocks = peerToPeerCommunication.blockChain.blocks
 
     When("we receive a message with the longer chain")

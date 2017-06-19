@@ -1,6 +1,6 @@
 package net.nightwhistler.nwcsc
 
-import net.nightwhistler.nwcsc.blockchain.{BlockChain, GenesisBlock}
+import net.nightwhistler.nwcsc.blockchain.{BlockChain, BlockMessage, GenesisBlock}
 import net.nightwhistler.nwcsc.blockchain.BlockChain.validChain
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.FlatSpec
@@ -18,7 +18,7 @@ class BlockChainTest extends FlatSpec with GeneratorDrivenPropertyChecks {
       text <- Gen.listOfN(length, Gen.alphaNumStr)
     } yield {
       val chain = BlockChain()
-      text.foreach { data => chain.addBlock(chain.generateNextBlock(data)) }
+      text.foreach { data => chain.addBlock(chain.generateNextBlock(BlockMessage(data))) }
       chain
     }
   }
@@ -33,8 +33,8 @@ class BlockChainTest extends FlatSpec with GeneratorDrivenPropertyChecks {
 
   "Adding an invalid block" should "never work" in forAll { (chain: BlockChain, firstName: String, secondName: String) =>
 
-    val firstNewBlock = chain.generateNextBlock(firstName)
-    val secondNewBlock = chain.generateNextBlock(secondName)
+    val firstNewBlock = chain.generateNextBlock(BlockMessage(firstName))
+    val secondNewBlock = chain.generateNextBlock(BlockMessage(secondName))
 
     val currentBlockLength = chain.blocks.length
 

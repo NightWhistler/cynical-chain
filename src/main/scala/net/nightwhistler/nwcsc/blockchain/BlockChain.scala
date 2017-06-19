@@ -19,7 +19,7 @@ case class BlockMessage( data: String, id: String = UUID.randomUUID().toString)
 
 object GenesisBlock extends Block(0, "0", 1497359352, BlockMessage("74dd70aa-2ddb-4aa2-8f95-ffc3b5cebad1","Genesis block"), 0, "ccce7d8349cf9f5d9a9c8f9293756f584d02dfdb953361c5ee36809aa0f560b4")
 
-case class Block(index: Long, previousHash: String, timestamp: Long, data: BlockMessage, nonse: Long, hash: String) {
+case class Block(index: Long, previousHash: String, timestamp: Long, message: BlockMessage, nonse: Long, hash: String) {
   def difficulty = BigInt(hash, 16)
 }
 
@@ -56,7 +56,7 @@ object BlockChain {
     BASE_DIFFICULTY / pow
   }
 
-  def calculateHashForBlock( block: Block ) = calculateHash(block.index, block.previousHash, block.timestamp, block.data, block.nonse)
+  def calculateHashForBlock( block: Block ) = calculateHash(block.index, block.previousHash, block.timestamp, block.message, block.nonse)
 
   def calculateHash(index: Long, previousHash: String, timestamp: Long, blockMessage: BlockMessage, nonse: Long) =
     s"$index:$previousHash:$timestamp:${blockMessage.id}:${blockMessage.data}:$nonse".sha256.hex
@@ -74,7 +74,7 @@ class BlockChain private( val blocks: Seq[Block] ) {
 
   def addBlock( blockMessage: BlockMessage ) = new BlockChain(generateNextBlock(blockMessage) +: blocks)
 
-  def contains( blockMessage: BlockMessage ) = blocks.find( b => b.data == blockMessage ).isDefined
+  def contains( blockMessage: BlockMessage ) = blocks.find( b => b.message == blockMessage ).isDefined
 
   def addBlock( block: Block ): Try[ BlockChain ] =
     if ( validBlock(block) ) Success( new BlockChain(block +: blocks ))

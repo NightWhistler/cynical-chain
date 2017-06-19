@@ -6,7 +6,7 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestKitBase, TestProbe}
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.actor.BlockChainActor.{AddPeer, GetPeers, MineBlock, Peers}
-import net.nightwhistler.nwcsc.blockchain.{Block, GenesisBlock}
+import net.nightwhistler.nwcsc.blockchain.{Block, BlockMessage, GenesisBlock}
 import net.nightwhistler.nwcsc.p2p.PeerManagement.Peer
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.{MessageType, PeerMessage}
 import org.scalatest.{FlatSpec, FlatSpecLike, FunSuite, Matchers}
@@ -67,13 +67,13 @@ class RestInterfaceTest extends FlatSpec with ScalatestRouteTest with TestKitBas
   it should "add a new block for /addBlock" in new RestInterfaceFixture {
     testProbe.setAutoPilot { (sender: ActorRef, msg: Any) => msg match {
       case MineBlock(data) =>
-        sender ! PeerMessage(MessageType.ResponseBlockChain, Seq(Block(0, "", 0, data, "")))
+        sender ! BlockMessage(data)
         TestActor.NoAutoPilot
       }
     }
 
     Post("/mineBlock", HttpEntity(ContentTypes.`text/html(UTF-8)`, "MyBlock")) ~> routes ~> check {
-      responseAs[Block] shouldEqual(Block(0, "", 0, "MyBlock", ""))
+      responseAs[BlockMessage].data shouldBe "MyBlock"
     }
   }
 

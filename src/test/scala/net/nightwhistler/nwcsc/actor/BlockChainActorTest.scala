@@ -3,7 +3,7 @@ package net.nightwhistler.nwcsc.actor
 import akka.actor.{ActorSystem, PoisonPill, Props}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import net.nightwhistler.nwcsc.actor.BlockChainActor._
-import net.nightwhistler.nwcsc.blockchain.GenesisBlock
+import net.nightwhistler.nwcsc.blockchain.{BlockMessage, GenesisBlock}
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.MessageType.ResponseBlockChain
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.{MessageType, PeerMessage}
 import org.scalatest._
@@ -45,11 +45,11 @@ class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSp
     probe.expectMsg(GetPeers)
 
     probe.expectMsgPF(){
-      case PeerMessage(ResponseBlockChain, Seq(block)) => assert(block.data == "testBlock")
+      case PeerMessage(ResponseBlockChain, Seq(block)) => assert(block.message.data == "testBlock")
     }
 
     expectMsgPF() {
-      case PeerMessage(ResponseBlockChain, Seq(block)) => assert(block.data == "testBlock")
+      case BlockMessage(data, id) => assert( data == "testBlock")
     }
   }
 
@@ -57,19 +57,17 @@ class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSp
     blockChainActor ! HandShake
     blockChainActor ! MineBlock("testBlock")
 
-    val pf: PartialFunction[Any, Boolean] = { case PeerMessage(ResponseBlockChain, _) => true}
-
-    //We should get it twice: once as the sender and once as a peer
-    expectMsgPF()(pf)
-    expectMsgPF()(pf)
+    //As the sender we receive the BlockMessage, and as a peer the actual block
+    expectMsgPF(){ case BlockMessage("testBlock",_) => true }
+    expectMsgPF(){ case PeerMessage(ResponseBlockChain, _) => true}
   }
 
-  it should "reply with the new block when a mining request is finished" in new BlockChainActorTest {
+  it should "reply with the UUID for the request when a mining request is made" in new BlockChainActorTest {
 
     blockChainActor ! MineBlock("testBlock")
 
     expectMsgPF() {
-      case PeerMessage(ResponseBlockChain, Seq(block)) => assert(block.data == "testBlock")
+      case BlockMessage(data, _) => assert(data == "testBlock")
     }
 
   }
