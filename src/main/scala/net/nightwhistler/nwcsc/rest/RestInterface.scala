@@ -38,9 +38,8 @@ trait RestInterface extends Json4sSupport {
         post {
           entity(as[String]) { data =>
             logger.info(s"Got request to add new block $data")
-            complete((blockChainActor ? MineBlock(data)).mapTo[PeerMessage].map {
-              case PeerMessage(_, Seq(block)) => block
-            })
+            blockChainActor ! MineBlock(data)
+            complete("Mining request received.")
           }
         }
     }~
