@@ -20,7 +20,7 @@ trait Mining {
 
   receiver {
     case m@MineBlock(blockMessage) =>
-      if ( ! miners.contains(blockMessage) ) {
+      if ( ! blockChain.contains(blockMessage) && ! miners.contains(blockMessage) ) {
         logger.debug(s"Got mining request: ${blockMessage}")
         //Tell all peers to start mining
         peers.foreach( p => p ! m)
