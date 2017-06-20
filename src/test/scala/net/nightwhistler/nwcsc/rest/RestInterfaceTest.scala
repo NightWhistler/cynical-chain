@@ -1,23 +1,20 @@
 package net.nightwhistler.nwcsc.rest
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorRef
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import akka.testkit.{ImplicitSender, TestActor, TestKit, TestKitBase, TestProbe}
+import akka.testkit.{TestActor, TestKitBase, TestProbe}
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.actor.BlockChainActor.{AddPeer, GetPeers, MineBlock, Peers}
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockMessage, GenesisBlock}
-import net.nightwhistler.nwcsc.p2p.PeerManagement.Peer
 import net.nightwhistler.nwcsc.p2p.PeerToPeerCommunication.{MessageType, PeerMessage}
-import org.scalatest.{FlatSpec, FlatSpecLike, FunSuite, Matchers}
+import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.ExecutionContext
 
 /**
   * Created by alex on 17-6-17.
   */
-import akka.http.scaladsl.server._
-import Directives._
 
 class RestInterfaceTest extends FlatSpec with ScalatestRouteTest with TestKitBase
   with Matchers {
