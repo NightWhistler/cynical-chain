@@ -92,15 +92,24 @@ case class BlockChain private( val blocks: Seq[Block] ) {
 
   @tailrec
   private def generateNextBlock( blockMessage: BlockMessage, nonse: Long ): Block = {
+    attemptBlock(blockMessage, nonse) match {
+      case Some(block) => block
+      case None => generateNextBlock(blockMessage, nonse +1)
+    }
+  }
+
+  def attemptBlock( blockMessage: BlockMessage, nonse: Long ): Option[Block] = {
     val previousBlock = latestBlock
     val nextIndex = previousBlock.index + 1
     val nextTimestamp = new Date().getTime() / 1000
     val nextHash = calculateHash(nextIndex, previousBlock.hash, nextTimestamp, blockMessage, nonse)
 
     val block = Block(nextIndex, previousBlock.hash, nextTimestamp, blockMessage, nonse, nextHash )
-    if (! validBlock(block) ) {
-      generateNextBlock(blockMessage, nonse +1)
-    } else block
+    if ( validBlock(block) ) {
+      Some(block)
+    } else {
+      None
+    }
   }
 
   def validBlock( newBlock: Block ): Boolean = BlockChain.validBlock(newBlock, latestBlock)
