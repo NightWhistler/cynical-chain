@@ -37,13 +37,13 @@ trait Mining {
       miners -= blockMessage
 
       if ( blockChain.validBlock(block) ) {
-        logger.debug("Received a valid block from the miner, adding it to the chain.")
+        logger.debug(s"Received a valid block from the miner for message ${blockMessage}, adding it to the chain.")
         handleBlockChainResponse(Seq(block))
       } else if ( ! blockChain.contains(blockMessage)) {
-        logger.debug("Received an outdated block from the miner, but the message isn't in the blockchain yet. Queueing it again.")
+        logger.debug(s"Received an outdated block from the miner for message ${blockMessage}, but the message isn't in the blockchain yet. Queueing it again.")
         self ! MineBlock(blockMessage)
       } else {
-        logger.debug("Miner finished, but the block is already in the chain.")
+        logger.debug(s"Miner finished for message ${blockMessage}, but the block is already in the chain.")
       }
 
     case Terminated(deadActor) =>
@@ -51,6 +51,9 @@ trait Mining {
         .map(_._1)
 
       key.foreach( blockMessage => miners -= blockMessage )
+      logger.debug( s"Terminated miner for ${key}")
       logger.debug(s"Still mining ${miners.size} blocks.")
   }
+
+
 }
