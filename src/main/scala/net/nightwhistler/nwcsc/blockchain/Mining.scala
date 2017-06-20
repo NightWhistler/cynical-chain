@@ -1,6 +1,7 @@
 package net.nightwhistler.nwcsc.blockchain
 
 import akka.actor.{ActorRef, Terminated}
+import net.nightwhistler.nwcsc.actor.MiningActor.MineResult
 import net.nightwhistler.nwcsc.actor.{CompositeActor, MiningActor}
 import net.nightwhistler.nwcsc.blockchain.Mining.MineBlock
 import net.nightwhistler.nwcsc.p2p.PeerToPeer
@@ -27,15 +28,29 @@ trait Mining {
         //Spin up a new actor to do the mining
         val miningActor = context.actorOf(MiningActor.props)
         context.watch(miningActor)
+
         miners += blockMessage -> miningActor
         miningActor ! MiningActor.MineBlock(blockChain, blockMessage)
       }
 
-    case Terminated =>
-      val deadActor = sender()
-      miners.find{ case (_, ref) => ref == deadActor }
-        .map(_._1).foreach( blockMessage => miners -= blockMessage )
+    case MineResult(blockMessage, block) =>
+      miners -= blockMessage
 
+      if ( blockChain.validBlock(block) ) {
+        logger.debug("Received a valid block from the miner, adding it to the chain.")
+        handleBlockChainResponse(Seq(block))
+      } else if ( ! blockChain.contains(blockMessage)) {
+        logger.debug("Received an outdated block from the miner, but the message isn't in the blockchain yet. Queueing it again.")
+        self ! MineBlock(blockMessage)
+      } else {
+        logger.debug("Miner finished, but the block is already in the chain.")
+      }
 
+    case Terminated(deadActor) =>
+      val key = miners.find{ case (_, ref) => ref == deadActor }
+        .map(_._1)
+
+      key.foreach( blockMessage => miners -= blockMessage )
+      logger.debug(s"Still mining ${miners.size} blocks.")
   }
 }
