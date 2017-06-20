@@ -64,7 +64,7 @@ object BlockChain {
 
 }
 
-class BlockChain private( val blocks: Seq[Block] ) {
+case class BlockChain private( val blocks: Seq[Block] ) {
 
   import BlockChain._
 
@@ -80,7 +80,7 @@ class BlockChain private( val blocks: Seq[Block] ) {
     if ( validBlock(block) ) Success( new BlockChain(block +: blocks ))
     else Failure( new IllegalArgumentException("Invalid block added"))
 
-  def firstBlock: Block = blocks(blocks.length -1)
+  def firstBlock: Block = blocks.last
   def latestBlock: Block = blocks.head
 
   def generateNextBlock(blockMessage: BlockMessage ): Block = {
@@ -104,8 +104,6 @@ class BlockChain private( val blocks: Seq[Block] ) {
   }
 
   def validBlock( newBlock: Block ): Boolean = BlockChain.validBlock(newBlock, latestBlock)
-
-  override def toString: String = s"$blocks"
 
 }
 
