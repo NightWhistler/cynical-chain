@@ -21,7 +21,7 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
 
 
   trait WithTestActor {
-    val blockChain = BlockChain().addBlock("My test data")
+    val blockChain = BlockChain().addMessage("My test data")
     val blockChainCommunicationActor: ActorRef = system.actorOf(Props(classOf[BlockChainCommunicationActor], blockChain))
   }
 
@@ -58,7 +58,7 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
     Given("A blockchain with 3 new blocks")
     val blockData = Seq("aap", "noot", "mies")
     val longerChain = blockData.foldLeft(blockChain) { case (chain, data) =>
-      chain.addBlock(data)
+      chain.addMessage(data)
     }
 
     blockChainCommunicationActor ! AddPeer(testActor.path.toStringWithoutAddress)
@@ -77,7 +77,7 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
   it should "do nothing if the received chain is valid but shorter than the current one" in new WithTestActor  {
     Given("the old blockchain and a current blockchain which is longer")
     val oldBlockChain = blockChain
-    val newBlockChain = oldBlockChain .addBlock("Some new data") .addBlock("And more")
+    val newBlockChain = oldBlockChain .addMessage("Some new data") .addMessage("And more")
 
     blockChainCommunicationActor ! ResponseBlockChain(newBlockChain)
 
@@ -93,7 +93,7 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
     Given("a later version of the blockchain which is 2 blocks ahead")
     val oldBlockChain = blockChain
     val newBlockChain = blockChain
-      .addBlock("Some new data") .addBlock("And more")
+      .addMessage("Some new data") .addMessage("And more")
 
     blockChainCommunicationActor ! HandShake
 

@@ -37,7 +37,7 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
     expectMsg(miningRequest)
 
     expectMsgPF() {
-      case ResponseBlock(block) => assert(block.message.data == "testBlock")
+      case ResponseBlock(block) => assert(block.messages.data == "testBlock")
     }
 
   }

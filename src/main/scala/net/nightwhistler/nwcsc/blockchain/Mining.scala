@@ -10,7 +10,7 @@ import net.nightwhistler.nwcsc.p2p.PeerToPeer
   * Created by alex on 20-6-17.
   */
 object Mining {
-  case class MineBlock( blockMessage: BlockMessage )
+  case class MineBlock(messages: Seq[BlockMessage] )
 
   case object BlockChainInvalidated
 }
@@ -27,40 +27,39 @@ trait Mining {
       miners.foreach( _ ! StopMining )
       val oldMessages = messages
       messages = Set.empty
-      oldMessages.foreach { msg =>
-        if ( ! blockChain.contains(msg) ) {
-          self ! MineBlock(msg)
-        } else logger.debug(s"Message ${msg} is already in the new chain, no longer need to mine it.")
-      }
 
-    case m@MineBlock(blockMessage) =>
-      if ( ! blockChain.contains(blockMessage) && ! messages.contains(blockMessage) ) {
-        logger.debug(s"Got mining request: ${blockMessage}")
-        messages += blockMessage
+      self ! MineBlock( oldMessages.filterNot( blockChain.contains(_)).toSeq )
+
+    case MineBlock(requestMessages) =>
+
+      logger.debug(s"Got mining request: ${requestMessages}")
+
+      if ( ! requestMessages.forall( messages.contains(_) )) {
+        messages ++= requestMessages
 
         //Tell all peers to start mining
-        peers.foreach( p => p ! m)
+        peers.foreach( p => p ! MineBlock(messages.toSeq))
 
         //Spin up a new actor to do the mining
         val miningActor = context.actorOf(MiningActor.props)
         context.watch(miningActor)
         miners += miningActor
 
-        miningActor ! MiningActor.MineBlock(blockChain, blockMessage)
+        miningActor ! MiningActor.MineBlock(blockChain, messages.toSeq)
       }
 
     case MineResult(block) =>
-      val blockMessage = block.message
-      messages -= blockMessage
+      val minedMessages = block.messages
+      messages = messages -- minedMessages.toSet
 
       if ( blockChain.validBlock(block) ) {
-        logger.debug(s"Received a valid block from the miner for message ${blockMessage}, adding it to the chain.")
+        logger.debug(s"Received a valid block from the miner for message ${minedMessages}, adding it to the chain.")
         handleBlockChainResponse(Seq(block))
-      } else if ( ! blockChain.contains(blockMessage)) {
-        logger.debug(s"Received an outdated block from the miner for message ${blockMessage}, but the message isn't in the blockchain yet. Queueing it again.")
-        self ! MineBlock(blockMessage)
+      } else if ( ! blockChain.containsAll(minedMessages)) {
+        logger.debug(s"Received an outdated block from the miner for messages ${minedMessages}, but not all messages are in the blockchain yet. Queueing the remainder again.")
+        self ! MineBlock(minedMessages)
       } else {
-        logger.debug(s"Miner finished for message ${blockMessage}, but the block is already in the chain.")
+        logger.debug(s"Miner finished for message ${minedMessages}, but the block is already in the chain.")
       }
 
     case Terminated(deadActor) =>
