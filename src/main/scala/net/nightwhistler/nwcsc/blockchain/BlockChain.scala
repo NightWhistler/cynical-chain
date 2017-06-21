@@ -28,6 +28,7 @@ object BlockChain {
   val BASE_DIFFICULTY = BigInt("f" * 64, 16)
   val EVERY_X_BLOCKS = 5
   val POW_CURVE = 5
+  val TWO_HOURS = 2 * 60 * 60 * 1000
 
   def apply(): BlockChain = new BlockChain(Seq(GenesisBlock))
 
@@ -46,6 +47,8 @@ object BlockChain {
   def validBlock(newBlock: Block, previousBlock: Block) =
     previousBlock.index + 1 == newBlock.index &&
     previousBlock.hash == newBlock.previousHash &&
+    (newBlock.timestamp - new Date().getTime) < TWO_HOURS &&
+    previousBlock.timestamp < newBlock.timestamp &&
     calculateHashForBlock(newBlock) == newBlock.hash &&
     newBlock.difficulty < calculateDifficulty(newBlock.index)
 
