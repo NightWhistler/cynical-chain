@@ -3,7 +3,8 @@ package net.nightwhistler.nwcsc.actor
 import akka.actor.Props
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.actor.MiningActor.StopMining
-import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.ResponseBlock
+import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.{ResponseBlock, ResponseBlockChain}
+import net.nightwhistler.nwcsc.blockchain.Mining.BlockChainInvalidated
 import net.nightwhistler.nwcsc.blockchain.{BlockChain, BlockChainCommunication, Mining}
 import net.nightwhistler.nwcsc.p2p.PeerToPeer
 
@@ -17,11 +18,7 @@ class BlockChainActor( var blockChain: BlockChain ) extends CompositeActor with 
 
   override def broadcast(message: Any): Unit = {
     message match {
-      case ResponseBlock(newBlock) =>
-        if ( miners.contains(newBlock.message) ) {
-          logger.debug(s"We have a new block for ${newBlock.message}, but we're still mining it. Stopping miner.")
-          miners(newBlock.message) ! StopMining
-        }
+      case ResponseBlock(_) | ResponseBlockChain(_) => self ! BlockChainInvalidated
       case _ => //Do nothing
     }
 
