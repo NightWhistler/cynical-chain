@@ -13,7 +13,7 @@ import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain, BlockMessage}
 object MiningActor {
   case class MineBlock(blockChain: BlockChain, blockMessage: BlockMessage, startNonse: Long = 0, timeStamp: Long = new java.util.Date().getTime )
 
-  case class MineResult(blockMessage: BlockMessage, block: Block)
+  case class MineResult(block: Block)
 
   case object StopMining
 
@@ -41,7 +41,7 @@ class MiningActor extends Actor {
         }.flatten.headOption match {
           case Some(block) =>
             logger.debug(s"Found a block for message ${blockMessage} after ${new java.util.Date().getTime - timeStamp} ms and ${block.nonse} attempts.")
-            context.parent ! MineResult(blockMessage, block)
+            context.parent ! MineResult(block)
             context.stop(self)
 
           case None if keepMining => self ! MineBlock(blockChain, blockMessage, startNonse + 100, timeStamp)

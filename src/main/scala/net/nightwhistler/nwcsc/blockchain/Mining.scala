@@ -33,7 +33,8 @@ trait Mining {
         miningActor ! MiningActor.MineBlock(blockChain, blockMessage)
       }
 
-    case MineResult(blockMessage, block) =>
+    case MineResult(block) =>
+      val blockMessage = block.message
       miners -= blockMessage
 
       if ( blockChain.validBlock(block) ) {
