@@ -32,21 +32,21 @@ class MiningActor extends Actor {
 
     case MineBlock(blockChain, messages, startNonse, timeStamp) =>
       if ( startNonse == 0 ) {
-        logger.debug(s"Starting mining attempt for blockMessage ${messages}")
+        logger.debug(s"Starting mining attempt for ${messages.size} messages with index ${blockChain.latestBlock.index +1}")
       }
 
       val newBlockOption = startNonse.until(startNonse+100).map { nonse =>
         blockChain.attemptBlock(messages, nonse)
       }.flatten.headOption match {
         case Some(block) =>
-          logger.debug(s"Found a block for messages ${messages} after ${new java.util.Date().getTime - timeStamp} ms and ${block.nonse} attempts.")
+          logger.debug(s"Found a block with index ${block.index} after ${new java.util.Date().getTime - timeStamp} ms and ${block.nonse} attempts.")
           context.parent ! MineResult(block)
           context.stop(self)
 
         case None if keepMining => self ! MineBlock(blockChain, messages, startNonse + 100, timeStamp)
 
         case None =>
-          logger.debug(s"Aborting mining for messages ${messages}")
+          logger.debug(s"Aborting mining for messages block ${blockChain.latestBlock.index +1}")
           context.stop(self)
 
       }

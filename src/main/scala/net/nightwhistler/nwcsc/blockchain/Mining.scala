@@ -25,17 +25,21 @@ trait Mining {
     case BlockChainInvalidated =>
       logger.debug("The blockchain has changed, stopping all miners.")
       miners.foreach( _ ! StopMining )
-      val oldMessages = messages
-      messages = Set.empty
 
-      self ! MineBlock( oldMessages.filterNot( blockChain.contains(_)).toSeq )
+      messages = messages.filterNot( blockChain.contains(_))
+
+      if ( ! messages.isEmpty ) {
+        self ! MineBlock(messages.toSeq)
+      }
 
     case MineBlock(requestMessages) =>
 
-      logger.debug(s"Got mining request: ${requestMessages}")
+      logger.debug(s"Got mining request for ${requestMessages.size} messages with current blockchain index at ${blockChain.latestBlock.index}")
+      val filtered = requestMessages.filterNot( blockChain.contains(_))
 
-      if ( ! requestMessages.forall( messages.contains(_) )) {
-        messages ++= requestMessages
+      //We only need to start mining if any new messages are in the message.
+      if ( ! (filtered.toSet -- messages).isEmpty ) {
+        messages ++= filtered
 
         //Tell all peers to start mining
         peers.foreach( p => p ! MineBlock(messages.toSeq))
@@ -49,22 +53,24 @@ trait Mining {
       }
 
     case MineResult(block) =>
-      val minedMessages = block.messages
-      messages = messages -- minedMessages.toSet
-
       if ( blockChain.validBlock(block) ) {
-        logger.debug(s"Received a valid block from the miner for message ${minedMessages}, adding it to the chain.")
+        logger.debug(s"Received a valid block from the miner for index ${block.index}, adding it to the chain.")
+        messages = messages -- block.messages
         handleBlockChainResponse(Seq(block))
-      } else if ( ! blockChain.containsAll(minedMessages)) {
-        logger.debug(s"Received an outdated block from the miner for messages ${minedMessages}, but not all messages are in the blockchain yet. Queueing the remainder again.")
-        self ! MineBlock(minedMessages)
-      } else {
-        logger.debug(s"Miner finished for message ${minedMessages}, but the block is already in the chain.")
-      }
+      } else if ( ! messages.isEmpty ) {
+        logger.debug(s"Received an outdated block from the miner for index ${block.index}, but not all messages are in the blockchain yet. Starting new mining attempt.")
+        self ! MineBlock(messages.toSeq)
+      } else logger.debug("Nothing more to mine for now.")
 
     case Terminated(deadActor) =>
       miners -= deadActor
-      logger.debug(s"Still running ${miners.size} miners for ${messages.size} blocks")
+      logger.debug(s"Still running ${miners.size} miners for ${messages.size} messages")
+
+      if ( miners.size == 0  && ! messages.isEmpty ) {
+        val request = MineBlock(messages.toSeq)
+        messages = Set.empty
+        self ! request
+      }
   }
 
 
