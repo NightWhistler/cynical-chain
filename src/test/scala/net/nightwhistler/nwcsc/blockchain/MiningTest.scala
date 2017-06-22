@@ -2,6 +2,7 @@ package net.nightwhistler.nwcsc.blockchain
 
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
+import net.nightwhistler.nwcsc.DummyDifficultyFunction
 import net.nightwhistler.nwcsc.actor.CompositeActor
 import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.ResponseBlock
 import net.nightwhistler.nwcsc.blockchain.Mining.MineBlock
@@ -14,7 +15,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, GivenWhenThen}
   */
 
 class TestMiningActor extends CompositeActor with Mining with PeerToPeer with BlockChainCommunication {
-  var blockChain = BlockChain()
+  var blockChain = BlockChain(DummyDifficultyFunction)
 }
 
 class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike

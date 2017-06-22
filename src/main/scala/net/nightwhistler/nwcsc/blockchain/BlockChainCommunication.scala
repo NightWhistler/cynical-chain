@@ -63,7 +63,7 @@ trait BlockChainCommunication {
 
       case _ =>
             logger.info("Received blockchain is longer than the current blockchain")
-            BlockChain(receivedBlocks) match {
+            blockChain.replaceBlocks(receivedBlocks) match {
               case Success(newChain) =>
                 blockChain = newChain
                 broadcast(responseBlockChain)

@@ -6,6 +6,7 @@ import java.util.{Date, UUID}
 
 import com.roundeights.hasher.Implicits._
 import com.typesafe.scalalogging.Logger
+import net.nightwhistler.nwcsc.blockchain.BlockChain.{DifficultyFunction, HashFunction}
 
 import scala.annotation.tailrec
 import scala.language.postfixOps
@@ -17,61 +18,27 @@ import scala.util.{Failure, Success, Try}
 
 case class BlockMessage( data: String, id: String = UUID.randomUUID().toString)
 
-object GenesisBlock extends Block(0, "0", 1497359352, Seq(BlockMessage("74dd70aa-2ddb-4aa2-8f95-ffc3b5cebad1","Genesis block")), 0, "e9f158815e681216371253df8af80db834248bed90f2dda82ad65ef99cf777f6")
+object GenesisBlock extends Block(0, BigInt(0), 1497359352, Seq(BlockMessage("74dd70aa-2ddb-4aa2-8f95-ffc3b5cebad1","Genesis block")), 0,
+  BigInt("2b33684ac1ce0a93a54410de84d4114a3882362bcec35a2a9b588630811ae92b", 16))
 
-case class Block(index: Long, previousHash: String, timestamp: Long, messages: Seq[BlockMessage], nonse: Long, hash: String) {
-  def difficulty = BigInt(hash, 16)
-}
+case class Block(index: Long, previousHash: BigInt, timestamp: Long, messages: Seq[BlockMessage], nonse: Long, hash: BigInt)
 
 object BlockChain {
 
-  val BASE_DIFFICULTY = BigInt("f" * 64, 16)
-  val EVERY_X_BLOCKS = 5
-  val POW_CURVE = 5
-  val TWO_HOURS = 2 * 60 * 60 * 1000
+  val TWO_HOURS = 2 * 60 * 60
 
-  def apply(): BlockChain = new BlockChain(Seq(GenesisBlock))
+  type DifficultyFunction = Block => BigInt
+  type HashFunction = Block => BigInt
 
-  def apply(blocks: Seq[Block]): Try[BlockChain] = {
-    if ( validChain(blocks) ) Success(new BlockChain(blocks))
-    else Failure(new IllegalArgumentException("Invalid chain specified."))
-  }
+  val defaultDifficultyFunction = NaiveCoinDifficulty
+  val defaultHashFunction = SimpleSHA256Hash
 
-  def validChain( chain: Seq[Block] ): Boolean = validChain(chain, Set.empty)
-
-  @tailrec
-  private def validChain( chain: Seq[Block], messages: Set[BlockMessage]): Boolean = chain match {
-    case singleBlock :: Nil if singleBlock == GenesisBlock => true
-    case head :: beforeHead :: tail if validBlock(head, beforeHead, messages) => validChain(beforeHead :: tail, messages ++ head.messages)
-    case _ => false
-  }
-
-  private def validBlock(newBlock: Block, previousBlock: Block, messages: Set[BlockMessage]) =
-    previousBlock.index + 1 == newBlock.index &&
-    previousBlock.hash == newBlock.previousHash &&
-    (newBlock.timestamp - new Date().getTime) < TWO_HOURS &&
-    previousBlock.timestamp < newBlock.timestamp &&
-    calculateHashForBlock(newBlock) == newBlock.hash &&
-    newBlock.difficulty < calculateDifficulty(newBlock.index) &&
-    ! newBlock.messages.exists( messages.contains(_))
-
-  def calculateDifficulty(index: Long): BigInt = {
-    val blockSeriesNumber = ((BigInt(index) + 1) / EVERY_X_BLOCKS ) + 1
-    val pow = blockSeriesNumber.pow(POW_CURVE)
-
-    BASE_DIFFICULTY / pow
-  }
-
-  def calculateHashForBlock( block: Block ) = calculateHash(block.index, block.previousHash, block.timestamp, block.messages, block.nonse)
-
-  def calculateHash(index: Long, previousHash: String, timestamp: Long, messages: Seq[BlockMessage], nonse: Long) =
-    s"$index:$previousHash:$timestamp:${contentsAsString(messages)}:$nonse".sha256.hex
-
-  private def contentsAsString( messages: Seq[BlockMessage]) = messages.map{ case BlockMessage(data, id) => s"${data}:${id}" }.mkString(":")
+  def apply( difficultyFunction: DifficultyFunction = defaultDifficultyFunction, hashFunction: HashFunction = defaultHashFunction )
+    = new BlockChain(Seq(GenesisBlock), difficultyFunction, hashFunction)
 
 }
 
-case class BlockChain private( val blocks: Seq[Block] ) {
+case class BlockChain private(val blocks: Seq[Block], difficultyFunction: DifficultyFunction, hashFunction: HashFunction) {
 
   import BlockChain._
 
@@ -79,14 +46,28 @@ case class BlockChain private( val blocks: Seq[Block] ) {
 
   def addMessage(data: String ): BlockChain = addBlock(Seq(BlockMessage(data)))
 
-  def addBlock(messages: Seq[BlockMessage] ) = new BlockChain(generateNextBlock(messages) +: blocks)
+  def addBlock(messages: Seq[BlockMessage] ) = new BlockChain(generateNextBlock(messages) +: blocks, difficultyFunction, hashFunction)
 
   def contains( blockMessage: BlockMessage ) = blocks.find( b => b.messages.contains(blockMessage) ).isDefined
 
   def containsAll( messages: Seq[BlockMessage] ) = messages.forall( contains(_) )
 
+  def replaceBlocks( newBlocks: Seq[Block] ): Try[BlockChain] = {
+    newBlocks match {
+      case GenesisBlock :: tail => BlockChain(difficultyFunction, hashFunction).appendBlocks(tail)
+      case blocks :+ GenesisBlock => BlockChain(difficultyFunction, hashFunction).appendBlocks(blocks.reverse)
+      case _ => Failure(new IllegalArgumentException("New chain does not start or end with the GenesisBlock"))
+    }
+  }
+
+  def appendBlocks( newBlocks: Seq[Block] ): Try[BlockChain] = {
+    newBlocks.foldLeft(Try(this)) { (blockChain, block) =>
+      blockChain.flatMap( chain => chain.addBlock(block))
+    }
+  }
+
   def addBlock( block: Block ): Try[ BlockChain ] =
-    if ( validBlock(block) ) Success( new BlockChain(block +: blocks ))
+    if ( validBlock(block) ) Success( new BlockChain(block +: blocks, difficultyFunction, hashFunction ))
     else Failure( new IllegalArgumentException("Invalid block added"))
 
   def firstBlock: Block = blocks.last
@@ -107,13 +88,25 @@ case class BlockChain private( val blocks: Seq[Block] ) {
     }
   }
 
+  private def validBlock(newBlock: Block, previousBlock: Block, messages: Set[BlockMessage]) =
+    previousBlock.index + 1 == newBlock.index &&
+    previousBlock.hash == newBlock.previousHash &&
+    (newBlock.timestamp - (new Date().getTime / 1000)) < TWO_HOURS &&
+    previousBlock.timestamp <= newBlock.timestamp &&
+    hashFunction(newBlock) == newBlock.hash &&
+    newBlock.hash < difficultyFunction(newBlock) &&
+    ! newBlock.messages.exists( messages.contains(_))
+
+
+
   def attemptBlock(messages: Seq[BlockMessage], nonse: Long ): Option[Block] = {
     val previousBlock = latestBlock
     val nextIndex = previousBlock.index + 1
     val nextTimestamp = new Date().getTime() / 1000
-    val nextHash = calculateHash(nextIndex, previousBlock.hash, nextTimestamp, messages, nonse)
 
-    val block = Block(nextIndex, previousBlock.hash, nextTimestamp, messages, nonse, nextHash )
+    val tempBlock = Block(nextIndex, previousBlock.hash, nextTimestamp, messages, nonse, 0)
+    val block = tempBlock.copy( hash = hashFunction(tempBlock) )
+
     if ( validBlock(block) ) {
       Some(block)
     } else {
@@ -122,6 +115,16 @@ case class BlockChain private( val blocks: Seq[Block] ) {
   }
 
   def validBlock(newBlock: Block): Boolean = validChain( newBlock +: blocks )
+
+  def validChain( chain: Seq[Block] ): Boolean = validChain(chain, Set.empty)
+
+  @tailrec
+  private def validChain( chain: Seq[Block], messages: Set[BlockMessage]): Boolean = chain match {
+    case singleBlock :: Nil if singleBlock == GenesisBlock => true
+    case head :: beforeHead :: tail if validBlock(head, beforeHead, messages) => validChain(beforeHead :: tail, messages ++ head.messages)
+    case _ => false
+  }
+
 }
 
 

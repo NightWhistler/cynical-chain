@@ -1,11 +1,14 @@
 package net.nightwhistler.nwcsc
 
-import net.nightwhistler.nwcsc.blockchain.{BlockChain, BlockMessage, GenesisBlock}
-import net.nightwhistler.nwcsc.blockchain.BlockChain.validChain
+import net.nightwhistler.nwcsc.blockchain.BlockChain.DifficultyFunction
+import net.nightwhistler.nwcsc.blockchain._
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.FlatSpec
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 
+object DummyDifficultyFunction extends DifficultyFunction {
+  override def apply(b: Block): BigInt = NaiveCoinDifficulty.BASE_DIFFICULTY
+}
 
 /**
   * Created by alex on 13-6-17.
@@ -17,14 +20,14 @@ class BlockChainTest extends FlatSpec with GeneratorDrivenPropertyChecks {
       length <- Gen.choose(0, 30)
       text <- Gen.listOfN(length, Gen.alphaNumStr)
     } yield {
-      val chain = BlockChain()
+      val chain = BlockChain(DummyDifficultyFunction, SimpleSHA256Hash)
       text.foreach { data => chain.addBlock(chain.generateNextBlock(Seq(BlockMessage(data)))) }
       chain
     }
   }
 
   "Generated chains" should "always be correct" in forAll { chain: BlockChain =>
-    assert( validChain( chain.blocks ) )
+    assert( chain.validChain( chain.blocks ) )
   }
 
   "For any given chain, the first block" must "be the Genesis block" in forAll { chain: BlockChain =>
