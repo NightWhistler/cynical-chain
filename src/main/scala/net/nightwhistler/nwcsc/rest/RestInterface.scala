@@ -56,8 +56,8 @@ trait RestInterface extends Json4sSupport {
      path("mineBlock") {
        entity(as[String]) { data =>
          logger.info(s"Got request to add new block $data")
-         val blockMessage = Seq(BlockMessage(data))
-         blockChainActor ! MineBlock(blockMessage)
+         val blockMessage = BlockMessage(data)
+         blockChainActor ! MineBlock(Seq(blockMessage))
          complete(blockMessage)
       }
     }~

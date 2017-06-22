@@ -74,7 +74,7 @@ class RestInterfaceTest extends FlatSpec with ScalatestRouteTest with TestKitBas
     }
   }
 
-  it should "add a new block for /addBlock" in new RestInterfaceFixture {
+  it should "add a new block for /mineBlock" in new RestInterfaceFixture {
     testProbe.setAutoPilot { (sender: ActorRef, msg: Any) => msg match {
       case MineBlock(data) =>
         sender ! ResponseBlock(Block(0, "", 0, data, 0, ""))

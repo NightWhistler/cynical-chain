@@ -41,7 +41,7 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
   it should "attach a block to the current chain when it receives a new BlockChain which has exactly 1 new block" in new WithTestActor {
 
     Given("and a new chain containing an extra block")
-    val nextBlock = blockChain.generateNextBlock(BlockMessage("Some more data"))
+    val nextBlock = blockChain.generateNextBlock(Seq(BlockMessage("Some more data")))
     val oldBlocks = blockChain.blocks
 
     When("we receive a message with the longer chain")

@@ -31,26 +31,26 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   "A Mining actor" should "reply with the new block when a mining request is finished" in new WithMiningActor {
 
     miningActor ! HandShake
-    val miningRequest = MineBlock(BlockMessage("testBlock"))
+    val miningRequest = MineBlock(Seq(BlockMessage("testBlock")))
     miningActor ! miningRequest
 
     expectMsg(miningRequest)
 
     expectMsgPF() {
-      case ResponseBlock(block) => assert(block.messages.data == "testBlock")
+      case ResponseBlock(block) => assert(block.messages(0).data == "testBlock")
     }
 
   }
 
   it should "forward any mining requests to all peers" in new WithMiningActor {
     val probe = TestProbe()
-    val blockMessage = BlockMessage("testBlock")
+    val blockMessages = Seq(BlockMessage("testBlock"))
     miningActor ! AddPeer(probe.ref.path.toStringWithoutAddress)
-    miningActor ! MineBlock(blockMessage)
+    miningActor ! MineBlock(blockMessages)
 
     probe.expectMsg(HandShake)
     probe.expectMsg(GetPeers)
-    probe.expectMsg(MineBlock(blockMessage))
+    probe.expectMsg(MineBlock(blockMessages))
   }
 
 
