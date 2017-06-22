@@ -4,23 +4,23 @@ import java.util.Date
 
 import akka.actor.{Actor, Props}
 import com.typesafe.scalalogging.Logger
-import net.nightwhistler.nwcsc.actor.MiningActor.{MineBlock, MineResult, StopMining}
+import net.nightwhistler.nwcsc.actor.MiningWorker.{MineBlock, MineResult, StopMining}
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain, BlockMessage}
 
 /**
   * Created by alex on 19-6-17.
   */
-object MiningActor {
+object MiningWorker {
   case class MineBlock(blockChain: BlockChain, messages: Seq[BlockMessage], startNonse: Long = 0, timeStamp: Long = new java.util.Date().getTime )
 
   case class MineResult(block: Block)
 
   case object StopMining
 
-  def props: Props = Props[MiningActor]
+  def props: Props = Props[MiningWorker]
 }
 
-class MiningActor extends Actor {
+class MiningWorker extends Actor {
 
   val logger = Logger("MiningActor")
 

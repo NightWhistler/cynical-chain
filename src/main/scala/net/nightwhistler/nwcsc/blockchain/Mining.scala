@@ -1,8 +1,8 @@
 package net.nightwhistler.nwcsc.blockchain
 
-import akka.actor.{ActorRef, Terminated}
-import net.nightwhistler.nwcsc.actor.MiningActor.{MineResult, StopMining}
-import net.nightwhistler.nwcsc.actor.{CompositeActor, MiningActor}
+import akka.actor.{ActorRef, ActorRefFactory, Props, Terminated}
+import net.nightwhistler.nwcsc.actor.MiningWorker.{MineResult, StopMining}
+import net.nightwhistler.nwcsc.actor.{CompositeActor, MiningWorker}
 import net.nightwhistler.nwcsc.blockchain.Mining.{BlockChainInvalidated, MineBlock}
 import net.nightwhistler.nwcsc.p2p.PeerToPeer
 
@@ -20,6 +20,8 @@ trait Mining {
 
   var miners: Set[ActorRef] = Set.empty
   var messages: Set[BlockMessage] = Set.empty
+
+  def createWorker( factory: ActorRefFactory ): ActorRef = factory.actorOf(MiningWorker.props)
 
   receiver {
     case BlockChainInvalidated =>
@@ -45,11 +47,11 @@ trait Mining {
         peers.foreach( p => p ! MineBlock(messages.toSeq))
 
         //Spin up a new actor to do the mining
-        val miningActor = context.actorOf(MiningActor.props)
+        val miningActor = createWorker(context)
         context.watch(miningActor)
         miners += miningActor
 
-        miningActor ! MiningActor.MineBlock(blockChain, messages.toSeq)
+        miningActor ! MiningWorker.MineBlock(blockChain, messages.toSeq)
       }
 
     case MineResult(block) =>

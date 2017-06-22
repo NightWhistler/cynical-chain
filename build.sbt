@@ -11,7 +11,7 @@ enablePlugins(JavaAppPackaging)
 dockerExposedPorts := Seq( 9000, 2552 )
 
 lazy val versions = new {
-  val akka = "2.4.18"
+  val akka = "2.5.3"
   val akkaHttp = "10.0.7"
 }
 

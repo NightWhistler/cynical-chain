@@ -2,7 +2,7 @@ package net.nightwhistler.nwcsc.actor
 
 import akka.actor.Props
 import com.typesafe.scalalogging.Logger
-import net.nightwhistler.nwcsc.actor.MiningActor.StopMining
+import net.nightwhistler.nwcsc.actor.MiningWorker.StopMining
 import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.{ResponseBlock, ResponseBlockChain}
 import net.nightwhistler.nwcsc.blockchain.Mining.BlockChainInvalidated
 import net.nightwhistler.nwcsc.blockchain.{BlockChain, BlockChainCommunication, Mining}
