@@ -30,7 +30,7 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
 
   "A BlockChainCommunication actor" should "send the blockchain to anybody that requests it" in new WithTestActor {
     blockChainCommunicationActor ! QueryAll
-    expectMsg(ResponseBlockChain(blockChain))
+    expectMsg(ResponseBlockChain(blockChain.blocks))
   }
 
   it should "send the latest block, and nothing more for a QueryLatest request" in new WithTestActor {
@@ -53,7 +53,7 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
 
     Then("the new block should be added to the chain, and a broadcast should be sent")
     expectMsgPF() {
-      case ResponseBlockChain(blockChain) => blockChain.blocks shouldEqual( nextBlock +: oldBlocks )
+      case ResponseBlockChain(blocks) => blocks shouldEqual( nextBlock +: oldBlocks )
     }
   }
 
@@ -69,10 +69,10 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
     expectMsg(GetPeers)
 
     When("we receive this longer chain")
-    blockChainCommunicationActor ! ResponseBlockChain(longerChain)
+    blockChainCommunicationActor ! ResponseBlockChain(longerChain.blocks)
 
     Then("The chain should be replaced, and a broadcast should be sent")
-    expectMsg(ResponseBlockChain(longerChain))
+    expectMsg(ResponseBlockChain(longerChain.blocks))
 
   }
 
@@ -82,14 +82,14 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
     val oldBlockChain = blockChain
     val newBlockChain = oldBlockChain .addMessage("Some new data") .addMessage("And more")
 
-    blockChainCommunicationActor ! ResponseBlockChain(newBlockChain)
+    blockChainCommunicationActor ! ResponseBlockChain(newBlockChain.blocks)
 
     When("we receive the old blockchain")
-    blockChainCommunicationActor ! ResponseBlockChain(oldBlockChain)
+    blockChainCommunicationActor ! ResponseBlockChain(oldBlockChain.blocks)
 
     Then("We expect the message to be discarded")
     blockChainCommunicationActor ! QueryAll
-    expectMsg(ResponseBlockChain(newBlockChain))
+    expectMsg(ResponseBlockChain(newBlockChain.blocks))
   }
 
   it should "query for the full chain when we receive a single block that is further ahead in the chain" in new WithTestActor {
@@ -108,7 +108,7 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
 
     Then("we expect the blockchain to be unchanged")
     blockChainCommunicationActor ! QueryAll
-    expectMsg(ResponseBlockChain(oldBlockChain))
+    expectMsg(ResponseBlockChain(oldBlockChain.blocks))
 
   }
 

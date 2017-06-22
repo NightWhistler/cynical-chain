@@ -39,7 +39,7 @@ class MiningActor extends Actor {
         blockChain.attemptBlock(messages, nonse)
       }.flatten.headOption match {
         case Some(block) =>
-          logger.debug(s"Found a block with index ${block.index} after ${new java.util.Date().getTime - timeStamp} ms and ${block.nonse} attempts.")
+          logger.debug(s"Found a block with index ${block.index} after ${new java.util.Date().getTime - timeStamp} ms and ${block.nonse +1} attempts.")
           context.parent ! MineResult(block)
           context.stop(self)
 

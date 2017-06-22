@@ -16,7 +16,7 @@ object BlockChainCommunication {
   case object QueryLatest
   case object QueryAll
 
-  case class ResponseBlockChain(blockChain: BlockChain)
+  case class ResponseBlockChain(blockChain: Seq[Block])
   case class ResponseBlock(block: Block)
 
 }
@@ -36,7 +36,7 @@ trait BlockChainCommunication {
 
     //FIXME: This is inefficient
     case ResponseBlock(block) => handleBlockChainResponse(Seq(block))
-    case ResponseBlockChain(blockChain) => handleBlockChainResponse(blockChain.blocks)
+    case ResponseBlockChain(blocks) => handleBlockChainResponse(blocks)
   }
 
   def handleBlockChainResponse( receivedBlocks: Seq[Block] ): Unit = {
@@ -74,7 +74,7 @@ trait BlockChainCommunication {
 
   def responseLatest = ResponseBlock(blockChain.latestBlock)
 
-  def responseBlockChain = ResponseBlockChain(blockChain)
+  def responseBlockChain = ResponseBlockChain(blockChain.blocks)
 
 }
 

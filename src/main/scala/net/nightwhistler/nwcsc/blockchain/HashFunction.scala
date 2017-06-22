@@ -10,7 +10,7 @@ object SimpleSHA256Hash extends HashFunction {
   def apply( block: Block ): BigInt = calculateHash(block.index, block.previousHash, block.timestamp, block.messages, block.nonse)
 
   private def calculateHash(index: Long, previousHash: BigInt, timestamp: Long, messages: Seq[BlockMessage], nonse: Long) =
-    BigInt(s"$index:${previousHash.toString(16)}:$timestamp:${contentsAsString(messages)}:$nonse".sha256.bytes)
+    BigInt(1, s"$index:${previousHash.toString(16)}:$timestamp:${contentsAsString(messages)}:$nonse".sha256.bytes)
 
   private def contentsAsString( messages: Seq[BlockMessage]) = messages.map{ case BlockMessage(data, id) => s"${data}:${id}" }.mkString(":")
 }

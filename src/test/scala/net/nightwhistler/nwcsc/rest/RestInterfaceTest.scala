@@ -32,7 +32,7 @@ class RestInterfaceTest extends FlatSpec with ScalatestRouteTest with TestKitBas
 
     testProbe.setAutoPilot { (sender: ActorRef, msg: Any) => msg match {
       case QueryAll =>
-        sender ! ResponseBlockChain(BlockChain())
+        sender ! ResponseBlockChain(Seq(GenesisBlock))
         TestActor.NoAutoPilot
       }
     }

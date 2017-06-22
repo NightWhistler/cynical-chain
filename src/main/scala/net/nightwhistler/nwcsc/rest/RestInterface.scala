@@ -13,12 +13,21 @@ import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.{QueryAll, Que
 import net.nightwhistler.nwcsc.blockchain.Mining.MineBlock
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockMessage, GenesisBlock}
 import net.nightwhistler.nwcsc.p2p.PeerToPeer.{AddPeer, GetPeers, Peers}
-import org.json4s.{DefaultFormats, Formats, native}
+import org.json4s.JsonAST.JString
+import org.json4s.{CustomSerializer, DefaultFormats, Formats, Serializer, native}
 
 import scala.concurrent.{ExecutionContext, Future}
 /**
   * Created by alex on 16-6-17.
   */
+
+class BigIntHexSerializer extends CustomSerializer[BigInt](format => ( {
+  case JString(s) => BigInt(s, 16)
+}, {
+  case i: BigInt => JString(i.toString(16))
+}
+))
+
 trait RestInterface extends Json4sSupport {
 
   val blockChainActor: ActorRef
@@ -27,7 +36,9 @@ trait RestInterface extends Json4sSupport {
   implicit val serialization = native.Serialization
   implicit val stringUnmarshallers = PredefinedFromEntityUnmarshallers.stringUnmarshaller
 
-  implicit def json4sFormats: Formats = DefaultFormats
+  implicit object Format extends DefaultFormats {
+    override val customSerializers: List[Serializer[_]] = List(new BigIntHexSerializer)
+  }
 
   implicit val executionContext: ExecutionContext
 
@@ -38,7 +49,7 @@ trait RestInterface extends Json4sSupport {
       path("blocks") {
         val chain: Future[Seq[Block]] = (blockChainActor ? QueryAll).map {
           //This is a bit of a hack, since JSON4S doesn't serialize case objects well
-          case ResponseBlockChain(blockChain) => blockChain.blocks.slice(0, blockChain.blocks.length -1) :+ GenesisBlock.copy()
+          case ResponseBlockChain(blocks) => blocks.slice(0, blocks.length -1) :+ GenesisBlock.copy()
         }
         complete(chain)
       }~
