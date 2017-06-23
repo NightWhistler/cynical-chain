@@ -52,7 +52,7 @@ trait Mining {
         miners += miningActor
 
         miningActor ! MiningWorker.MineBlock(blockChain, messages.toSeq)
-      }
+      } else logger.debug("Request contained no new messages, so not doing anything.")
 
     case MineResult(block) =>
       if ( blockChain.validBlock(block) ) {
