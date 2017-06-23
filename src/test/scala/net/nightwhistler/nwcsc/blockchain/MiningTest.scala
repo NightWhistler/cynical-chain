@@ -7,7 +7,7 @@ import net.nightwhistler.nwcsc.actor.{CompositeActor, MiningWorker}
 import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.ResponseBlock
 import net.nightwhistler.nwcsc.blockchain.Mining.{BlockChainInvalidated, MineBlock}
 import net.nightwhistler.nwcsc.p2p.PeerToPeer
-import net.nightwhistler.nwcsc.p2p.PeerToPeer.{AddPeer, GetPeers, HandShake}
+import net.nightwhistler.nwcsc.p2p.PeerToPeer.{AddPeer, GetPeers, HandShake, ResolvedPeer}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, GivenWhenThen, Matchers}
 
 /**
@@ -127,7 +127,7 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   it should "forward any mining requests to all peers" in new WithMiningActor {
     val probe = TestProbe()
     val blockMessages = Seq(BlockMessage("testBlock"))
-    miningActor ! AddPeer(probe.ref.path.toStringWithoutAddress)
+    miningActor ! ResolvedPeer(probe.ref)
     miningActor ! MineBlock(blockMessages)
 
     probe.expectMsg(HandShake)
