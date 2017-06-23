@@ -2,10 +2,8 @@ package net.nightwhistler.nwcsc.blockchain
 
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
-import net.nightwhistler.nwcsc.DummyDifficultyFunction
 import net.nightwhistler.nwcsc.actor.MiningWorker.{MineResult, StopMining}
 import net.nightwhistler.nwcsc.actor.{CompositeActor, MiningWorker}
-import net.nightwhistler.nwcsc.blockchain.BlockChain.DifficultyFunction
 import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.ResponseBlock
 import net.nightwhistler.nwcsc.blockchain.Mining.{BlockChainInvalidated, MineBlock}
 import net.nightwhistler.nwcsc.p2p.PeerToPeer
@@ -20,10 +18,6 @@ class TestMiningActor(dummyWorker: ActorRef, var blockChain: BlockChain) extends
   override def createWorker(factory: ActorRefFactory): ActorRef = dummyWorker
 }
 
-object ImpossibleDifficultyFunction extends DifficultyFunction {
-  override def apply(block: Block): BigInt = 0
-}
-
 class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   with ImplicitSender with GivenWhenThen with BeforeAndAfterAll {
 
@@ -33,7 +27,7 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
 
   trait WithMiningActor {
     val workerProbe = TestProbe()
-    var blockChain = BlockChain(DummyDifficultyFunction)
+    var blockChain = BlockChain(DummyDifficulty)
     val miningActor = system.actorOf(Props(classOf[TestMiningActor], workerProbe.ref, blockChain))
   }
 

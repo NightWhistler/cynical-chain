@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
 import net.nightwhistler.nwcsc.actor.CompositeActor
 import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlockChain}
-import net.nightwhistler.nwcsc.blockchain.{BlockChain, BlockChainCommunication, BlockMessage, SimpleSHA256Hash}
+import net.nightwhistler.nwcsc.blockchain._
 import net.nightwhistler.nwcsc.p2p.PeerToPeer
 import net.nightwhistler.nwcsc.p2p.PeerToPeer.{AddPeer, GetPeers, HandShake}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, GivenWhenThen, Matchers}
@@ -24,7 +24,7 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
   }
 
   trait WithTestActor {
-    val blockChain = BlockChain(DummyDifficultyFunction).addMessage("My test data")
+    val blockChain = BlockChain(DummyDifficulty).addMessage("My test data")
     val blockChainCommunicationActor: ActorRef = system.actorOf(Props(classOf[BlockChainCommunicationActor], blockChain))
   }
 

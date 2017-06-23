@@ -6,9 +6,6 @@ import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.FlatSpec
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 
-object DummyDifficultyFunction extends DifficultyFunction {
-  override def apply(b: Block): BigInt = NaiveCoinDifficulty.BASE_DIFFICULTY
-}
 
 /**
   * Created by alex on 13-6-17.
@@ -20,7 +17,7 @@ class BlockChainTest extends FlatSpec with GeneratorDrivenPropertyChecks {
       length <- Gen.choose(0, 30)
       text <- Gen.listOfN(length, Gen.alphaNumStr)
     } yield {
-      val chain = BlockChain(DummyDifficultyFunction, SimpleSHA256Hash)
+      val chain = BlockChain(DummyDifficulty, SimpleSHA256Hash)
       text.foreach { data => chain.addBlock(chain.generateNextBlock(Seq(BlockMessage(data)))) }
       chain
     }

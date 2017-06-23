@@ -23,5 +23,18 @@ object NaiveCoinDifficulty extends DifficultyFunction {
 
     BASE_DIFFICULTY / pow
   }
+}
 
+/**
+  * A difficultyfunction that will never succeed
+  */
+object ImpossibleDifficulty extends DifficultyFunction {
+  override def apply(block: Block): BigInt = 0
+}
+
+/**
+  * A difficulty function that will always succeed
+  */
+object DummyDifficulty extends DifficultyFunction {
+  override def apply(b: Block): BigInt = NaiveCoinDifficulty.BASE_DIFFICULTY
 }

@@ -1,10 +1,7 @@
 package net.nightwhistler.nwcsc.blockchain
 
-import java.lang.Integer.parseInt
-import java.math.BigInteger
 import java.util.{Date, UUID}
 
-import com.roundeights.hasher.Implicits._
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.blockchain.BlockChain.{DifficultyFunction, HashFunction}
 
