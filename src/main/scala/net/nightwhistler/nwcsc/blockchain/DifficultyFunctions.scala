@@ -35,6 +35,6 @@ object ImpossibleDifficulty extends DifficultyFunction {
 /**
   * A difficulty function that will always succeed
   */
-object DummyDifficulty extends DifficultyFunction {
+object NoDifficulty extends DifficultyFunction {
   override def apply(b: Block): BigInt = NaiveCoinDifficulty.BASE_DIFFICULTY
 }

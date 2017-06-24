@@ -1,6 +1,7 @@
 package net.nightwhistler.nwcsc.blockchain
 
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, PoisonPill, Props, Terminated}
+import akka.testkit.TestActor.AutoPilot
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
 import net.nightwhistler.nwcsc.actor.MiningWorker.{MineResult, StopMining}
 import net.nightwhistler.nwcsc.actor.{CompositeActor, MiningWorker}
@@ -29,7 +30,7 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
     var workerProbe = TestProbe()
 
     val probeFactory = { () => workerProbe.ref }
-    var blockChain = BlockChain(DummyDifficulty)
+    var blockChain = BlockChain(NoDifficulty)
     val miningActor = system.actorOf(Props(classOf[TestMiningActor], probeFactory, blockChain))
   }
 
@@ -81,27 +82,6 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
         textMessages should contain ("message 1")
         textMessages should contain ("message 2")
     }
-  }
-
-  ignore should "re-schedule all outstanding messages in case an outdated block is returned" in new WithMiningActor {
-    Given("two mining requests")
-    val originalMessage = BlockMessage("originalMessage")
-    miningActor ! MineBlock(Seq(originalMessage))
-    workerProbe.expectMsgPF() {
-      case MiningWorker.MineBlock(_, Seq(msg), 0, _) => msg shouldEqual originalMessage
-    }
-
-    When("a new block comes in, updating the actor's blockchain")
-    miningActor ! ResponseBlock(blockChain.addMessage("Some other message").latestBlock)
-
-    When("a worker that returns a block that is no longer valid")
-    miningActor ! MineResult(blockChain.addBlock(Seq(originalMessage)).latestBlock)
-
-    Then("all the messages in the block that are not yet in the blockchain should be added to a new request")
-    workerProbe.expectMsgPF() {
-      case MiningWorker.MineBlock(_, Seq(msg), 0, _) => msg shouldEqual originalMessage
-    }
-
   }
 
   it should "keep spawning workers until there is no more work to do" in new WithMiningActor {

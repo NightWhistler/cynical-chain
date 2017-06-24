@@ -21,7 +21,7 @@ trait Mining {
   var miners: Set[ActorRef] = Set.empty
   var messages: Set[BlockMessage] = Set.empty
 
-  def createWorker( factory: ActorRefFactory ): ActorRef = factory.actorOf(MiningWorker.props)
+  def createWorker( factory: ActorRefFactory ): ActorRef = factory.actorOf(MiningWorker.props(self))
 
   receiver {
     case BlockChainInvalidated =>
@@ -59,10 +59,7 @@ trait Mining {
         logger.debug(s"Received a valid block from the miner for index ${block.index}, adding it to the chain.")
         messages = messages -- block.messages
         handleBlockChainResponse(Seq(block))
-      } else if ( ! messages.isEmpty ) {
-        logger.debug(s"Received an outdated block from the miner for index ${block.index}, but not all messages are in the blockchain yet. Starting new mining attempt.")
-        self ! MineBlock(messages.toSeq)
-      } else logger.debug("Nothing more to mine for now.")
+      } else logger.debug(s"Received an outdated block from the miner for index ${block.index}.")
 
     case Terminated(deadActor) =>
       miners -= deadActor

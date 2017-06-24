@@ -24,7 +24,7 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
   }
 
   trait WithTestActor {
-    val blockChain = BlockChain(DummyDifficulty).addMessage("My test data")
+    val blockChain = BlockChain(NoDifficulty).addMessage("My test data")
     val blockChainCommunicationActor: ActorRef = system.actorOf(Props(classOf[BlockChainCommunicationActor], blockChain))
   }
 

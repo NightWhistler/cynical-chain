@@ -17,7 +17,7 @@ class BlockChainTest extends FlatSpec with GeneratorDrivenPropertyChecks {
       length <- Gen.choose(0, 30)
       text <- Gen.listOfN(length, Gen.alphaNumStr)
     } yield {
-      val chain = BlockChain(DummyDifficulty, SimpleSHA256Hash)
+      val chain = BlockChain(NoDifficulty, SimpleSHA256Hash)
       text.foreach { data => chain.addBlock(chain.generateNextBlock(Seq(BlockMessage(data)))) }
       chain
     }
