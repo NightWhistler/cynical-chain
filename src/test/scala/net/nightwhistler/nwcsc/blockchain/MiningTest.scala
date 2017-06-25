@@ -1,14 +1,13 @@
 package net.nightwhistler.nwcsc.blockchain
 
-import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, PoisonPill, Props, Terminated}
-import akka.testkit.TestActor.AutoPilot
+import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, PoisonPill, Props}
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
 import net.nightwhistler.nwcsc.actor.MiningWorker.{MineResult, StopMining}
 import net.nightwhistler.nwcsc.actor.{CompositeActor, MiningWorker}
 import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.ResponseBlock
 import net.nightwhistler.nwcsc.blockchain.Mining.{BlockChainInvalidated, MineBlock}
 import net.nightwhistler.nwcsc.p2p.PeerToPeer
-import net.nightwhistler.nwcsc.p2p.PeerToPeer.{AddPeer, GetPeers, HandShake, ResolvedPeer}
+import net.nightwhistler.nwcsc.p2p.PeerToPeer.{GetPeers, HandShake, ResolvedPeer}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, GivenWhenThen, Matchers}
 
 /**

@@ -22,8 +22,6 @@ case class Block(index: Long, previousHash: BigInt, timestamp: Long, messages: S
 
 object BlockChain {
 
-  val TWO_HOURS = 2 * 60 * 60
-
   type DifficultyFunction = Block => BigInt
   type HashFunction = Block => BigInt
 
@@ -37,7 +35,7 @@ object BlockChain {
 
 case class BlockChain private(val blocks: Seq[Block], difficultyFunction: DifficultyFunction, hashFunction: HashFunction) {
 
-  import BlockChain._
+  val TWO_HOURS = 2 * 60 * 60
 
   val logger = Logger("BlockChain")
 

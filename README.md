@@ -1,5 +1,5 @@
-Cynical block-chain implementation in Scala
-==================================
+Cynical block-chain implementation using Akka and Scala
+=======================================================
 
 The name is a bit on the pun, since I forked this project off my previous naivechain-scala project.
 
