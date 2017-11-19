@@ -50,25 +50,25 @@ trait BlockChainCommunication {
         logger.debug("received blockchain is not longer than received blockchain. Do nothing")
 
       case latestReceivedBlock :: Nil if latestReceivedBlock.previousHash == localLatestBlock.hash =>
-         logger.info("We can append the received block to our chain.")
-            blockChain.addBlock(latestReceivedBlock) match {
-              case Success(newChain) =>
-                blockChain = newChain
-                broadcast(responseLatest)
-              case Failure(e) => logger.error("Refusing to add new block", e)
-            }
+        logger.info("We can append the received block to our chain.")
+        blockChain.addBlock(latestReceivedBlock) match {
+          case Success(newChain) =>
+            blockChain = newChain
+            broadcast(responseLatest)
+          case Failure(e) => logger.error("Refusing to add new block", e)
+        }
       case _ :: Nil =>
-            logger.info("We have to query the chain from our peer")
-            broadcast(QueryAll)
+        logger.info("We have to query the chain from our peer")
+        broadcast(QueryAll)
 
       case _ =>
-            logger.info("Received blockchain is longer than the current blockchain")
-            blockChain.replaceBlocks(receivedBlocks) match {
-              case Success(newChain) =>
-                blockChain = newChain
-                broadcast(responseBlockChain)
-              case Failure(s) => logger.error("Rejecting received chain.", s)
-            }
+        logger.info("Received blockchain is longer than the current blockchain")
+        blockChain.replaceBlocks(receivedBlocks) match {
+          case Success(newChain) =>
+            blockChain = newChain
+            broadcast(responseBlockChain)
+          case Failure(s) => logger.error("Rejecting received chain.", s)
+        }
     }
   }
 

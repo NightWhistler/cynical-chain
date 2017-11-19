@@ -1,7 +1,5 @@
 package net.nightwhistler.nwcsc.actor
 
-import java.util.Date
-
 import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.actor.MiningWorker.{MineBlock, MineResult, StopMining}
@@ -35,9 +33,9 @@ class MiningWorker(reportBackTo: ActorRef) extends Actor {
         logger.debug(s"Starting mining attempt for ${messages.size} messages with index ${blockChain.latestBlock.index +1}")
       }
 
-      val newBlockOption = startNonse.until(startNonse+100).map { nonse =>
+      startNonse.until(startNonse+100).flatMap { nonse =>
         blockChain.attemptBlock(messages, nonse)
-      }.flatten.headOption match {
+      }.headOption match {
         case Some(block) =>
           logger.debug(s"Found a block with index ${block.index} after ${new java.util.Date().getTime - timeStamp} ms and ${block.nonse +1} attempts.")
           reportBackTo ! MineResult(block)
