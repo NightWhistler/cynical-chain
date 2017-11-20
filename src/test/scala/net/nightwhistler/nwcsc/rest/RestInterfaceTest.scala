@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.testkit.{TestActor, TestKitBase, TestProbe}
 import com.typesafe.scalalogging.Logger
-import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlockChain}
+import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlocks}
 import net.nightwhistler.nwcsc.blockchain.Mining.MineBlock
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain, BlockMessage, GenesisBlock}
 import net.nightwhistler.nwcsc.p2p.PeerToPeer.{AddPeer, GetPeers, Peers}
@@ -32,7 +32,7 @@ class RestInterfaceTest extends FlatSpec with ScalatestRouteTest with TestKitBas
 
     testProbe.setAutoPilot { (sender: ActorRef, msg: Any) => msg match {
       case QueryAll =>
-        sender ! ResponseBlockChain(Seq(GenesisBlock))
+        sender ! ResponseBlocks(Seq(GenesisBlock))
         TestActor.NoAutoPilot
       }
     }

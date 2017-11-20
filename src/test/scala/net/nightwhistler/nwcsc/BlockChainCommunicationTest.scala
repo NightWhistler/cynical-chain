@@ -3,7 +3,7 @@ package net.nightwhistler.nwcsc
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit}
 import net.nightwhistler.nwcsc.actor.CompositeActor
-import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlockChain}
+import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlocks}
 import net.nightwhistler.nwcsc.blockchain._
 import net.nightwhistler.nwcsc.p2p.PeerToPeer
 import net.nightwhistler.nwcsc.p2p.PeerToPeer.{AddPeer, GetPeers, HandShake}
@@ -30,7 +30,7 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
 
   "A BlockChainCommunication actor" should "send the blockchain to anybody that requests it" in new WithTestActor {
     blockChainCommunicationActor ! QueryAll
-    expectMsg(ResponseBlockChain(blockChain.blocks))
+    expectMsg(ResponseBlocks(blockChain.blocks))
   }
 
   it should "send the latest block, and nothing more for a QueryLatest request" in new WithTestActor {
@@ -53,7 +53,7 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
 
     Then("the new block should be added to the chain, and a broadcast should be sent")
     expectMsgPF() {
-      case ResponseBlockChain(blocks) => blocks shouldEqual( nextBlock +: oldBlocks )
+      case ResponseBlocks(blocks) => blocks shouldEqual( nextBlock +: oldBlocks )
     }
   }
 
@@ -69,10 +69,10 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
     expectMsg(GetPeers)
 
     When("we receive this longer chain")
-    blockChainCommunicationActor ! ResponseBlockChain(longerChain.blocks)
+    blockChainCommunicationActor ! ResponseBlocks(longerChain.blocks)
 
     Then("The chain should be replaced, and a broadcast should be sent")
-    expectMsg(ResponseBlockChain(longerChain.blocks))
+    expectMsg(ResponseBlocks(longerChain.blocks))
 
   }
 
@@ -82,14 +82,14 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
     val oldBlockChain = blockChain
     val newBlockChain = oldBlockChain .addMessage("Some new data") .addMessage("And more")
 
-    blockChainCommunicationActor ! ResponseBlockChain(newBlockChain.blocks)
+    blockChainCommunicationActor ! ResponseBlocks(newBlockChain.blocks)
 
     When("we receive the old blockchain")
-    blockChainCommunicationActor ! ResponseBlockChain(oldBlockChain.blocks)
+    blockChainCommunicationActor ! ResponseBlocks(oldBlockChain.blocks)
 
     Then("We expect the message to be discarded")
     blockChainCommunicationActor ! QueryAll
-    expectMsg(ResponseBlockChain(newBlockChain.blocks))
+    expectMsg(ResponseBlocks(newBlockChain.blocks))
   }
 
   it should "query for the full chain when we receive a single block that is further ahead in the chain" in new WithTestActor {
@@ -108,7 +108,7 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
 
     Then("we expect the blockchain to be unchanged")
     blockChainCommunicationActor ! QueryAll
-    expectMsg(ResponseBlockChain(oldBlockChain.blocks))
+    expectMsg(ResponseBlocks(oldBlockChain.blocks))
 
   }
 

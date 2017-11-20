@@ -9,7 +9,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.scalalogging.Logger
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
-import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlockChain}
+import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlocks}
 import net.nightwhistler.nwcsc.blockchain.Mining.MineBlock
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockMessage, GenesisBlock}
 import net.nightwhistler.nwcsc.p2p.PeerToPeer.{AddPeer, GetPeers, Peers}
@@ -49,7 +49,7 @@ trait RestInterface extends Json4sSupport {
       path("blocks") {
         val chain: Future[Seq[Block]] = (blockChainActor ? QueryAll).map {
           //This is a bit of a hack, since JSON4S doesn't serialize case objects well
-          case ResponseBlockChain(blocks) => blocks.slice(0, blocks.length -1) :+ GenesisBlock.copy()
+          case ResponseBlocks(blocks) => blocks.slice(0, blocks.length -1) :+ GenesisBlock.copy()
         }
         complete(chain)
       }~

@@ -16,7 +16,7 @@ object BlockChainCommunication {
   case object QueryLatest
   case object QueryAll
 
-  case class ResponseBlockChain(blockChain: Seq[Block])
+  case class ResponseBlocks(blocks: Seq[Block])
   case class ResponseBlock(block: Block)
 
 }
@@ -34,9 +34,26 @@ trait BlockChainCommunication {
     case QueryLatest => sender() ! responseLatest
     case QueryAll => sender() ! responseBlockChain
 
-    //FIXME: This is inefficient
-    case ResponseBlock(block) => handleBlockChainResponse(Seq(block))
-    case ResponseBlockChain(blocks) => handleBlockChainResponse(blocks)
+    case ResponseBlock(block) => handleNewBlock(block)
+    case ResponseBlocks(blocks) => handleBlockChainResponse(blocks)
+  }
+
+  def handleNewBlock( block: Block ): Unit = {
+
+    val localLatestBlock = blockChain.latestBlock
+
+    if (block.previousHash == localLatestBlock.hash) {
+      logger.info("We can append the received block to our chain.")
+      blockChain.addBlock(block) match {
+        case Success(newChain) =>
+          blockChain = newChain
+          broadcast(responseLatest)
+        case Failure(e) => logger.error("Refusing to add new block", e)
+      }
+    } else {
+      logger.info("We have to query the chain from our peer")
+      broadcast(QueryAll)
+    }
   }
 
   def handleBlockChainResponse( receivedBlocks: Seq[Block] ): Unit = {
@@ -48,18 +65,6 @@ trait BlockChainCommunication {
 
       case latestReceivedBlock :: _ if latestReceivedBlock.index <= localLatestBlock.index =>
         logger.debug("received blockchain is not longer than received blockchain. Do nothing")
-
-      case latestReceivedBlock :: Nil if latestReceivedBlock.previousHash == localLatestBlock.hash =>
-        logger.info("We can append the received block to our chain.")
-        blockChain.addBlock(latestReceivedBlock) match {
-          case Success(newChain) =>
-            blockChain = newChain
-            broadcast(responseLatest)
-          case Failure(e) => logger.error("Refusing to add new block", e)
-        }
-      case _ :: Nil =>
-        logger.info("We have to query the chain from our peer")
-        broadcast(QueryAll)
 
       case _ =>
         logger.info("Received blockchain is longer than the current blockchain")
@@ -74,7 +79,7 @@ trait BlockChainCommunication {
 
   def responseLatest = ResponseBlock(blockChain.latestBlock)
 
-  def responseBlockChain = ResponseBlockChain(blockChain.blocks)
+  def responseBlockChain = ResponseBlocks(blockChain.blocks)
 
 }
 

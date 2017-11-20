@@ -58,7 +58,7 @@ trait Mining {
       if ( blockChain.validBlock(block) ) {
         logger.debug(s"Received a valid block from the miner for index ${block.index}, adding it to the chain.")
         messages = messages -- block.messages
-        handleBlockChainResponse(Seq(block))
+        handleNewBlock(block)
       } else logger.debug(s"Received an outdated block from the miner for index ${block.index}.")
 
     case Terminated(deadActor) =>
