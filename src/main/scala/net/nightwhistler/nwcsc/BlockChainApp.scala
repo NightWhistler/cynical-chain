@@ -1,13 +1,13 @@
 package net.nightwhistler.nwcsc
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
-import net.nightwhistler.nwcsc.actor.BlockChainActor
+import net.nightwhistler.nwcsc.actor.{BlockChainCommunication, PeerToPeer}
+import net.nightwhistler.nwcsc.actor.PeerToPeer.AddPeer
 import net.nightwhistler.nwcsc.blockchain.BlockChain
-import net.nightwhistler.nwcsc.p2p.PeerToPeer.AddPeer
 import net.nightwhistler.nwcsc.rest.RestInterface
 
 
@@ -17,7 +17,8 @@ object BlockChainApp extends App with RestInterface {
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
 
-  val blockChainActor = system.actorOf(BlockChainActor.props(BlockChain()), "blockChainActor")
+  val peerToPeerActor = system.actorOf(PeerToPeer.props)
+  val blockChainActor = system.actorOf(BlockChainCommunication.props(BlockChain(), peerToPeerActor))
 
   val config = ConfigFactory.load()
   val logger = Logger("WebServer")

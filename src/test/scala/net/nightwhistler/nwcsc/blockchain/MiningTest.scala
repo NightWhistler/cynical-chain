@@ -2,20 +2,20 @@ package net.nightwhistler.nwcsc.blockchain
 
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, PoisonPill, Props}
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
+import net.nightwhistler.nwcsc.actor.BlockChainCommunication.ResponseBlock
+import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock}
 import net.nightwhistler.nwcsc.actor.MiningWorker.{MineResult, StopMining}
-import net.nightwhistler.nwcsc.actor.{CompositeActor, MiningWorker}
-import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.ResponseBlock
-import net.nightwhistler.nwcsc.blockchain.Mining.{BlockChainInvalidated, MineBlock}
-import net.nightwhistler.nwcsc.p2p.PeerToPeer
-import net.nightwhistler.nwcsc.p2p.PeerToPeer.{GetPeers, HandShake, ResolvedPeer}
+import net.nightwhistler.nwcsc.actor.PeerToPeer.{BroadcastRequest, GetPeers, HandShake, ResolvedPeer}
+import net.nightwhistler.nwcsc.actor._
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, GivenWhenThen, Matchers}
 
 /**
   * Created by alex on 20-6-17.
   */
 
-class TestMiningActor(dummyWorker: => ActorRef, var blockChain: BlockChain) extends CompositeActor with Mining with PeerToPeer with BlockChainCommunication {
-  override def createWorker(factory: ActorRefFactory): ActorRef = dummyWorker
+class TestMiningActor(dummyWorker: () => ActorRef, val myBlockChain: BlockChain, blockChainCommunication: ActorRef,
+                      peerToPeer: ActorRef) extends Mining( myBlockChain, blockChainCommunication, peerToPeer ) {
+  override def createWorker(factory: ActorRefFactory): ActorRef = dummyWorker()
 }
 
 class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
@@ -26,14 +26,18 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   }
 
   trait WithMiningActor {
+    val probeProvider = () => workerProbe.ref
     var workerProbe = TestProbe()
 
-    val probeFactory = { () => workerProbe.ref }
     var blockChain = BlockChain(NoDifficulty)
-    val miningActor = system.actorOf(Props(classOf[TestMiningActor], probeFactory, blockChain))
+    val blockChainProbe = TestProbe()
+    val peerToPeerProbe = TestProbe()
+
+    val miningActor = system.actorOf(Props(new TestMiningActor(probeProvider, blockChain,
+      blockChainProbe.ref, peerToPeerProbe.ref)))
   }
 
-  "A Mining actor" should "notify all peers with the new block when a mining request is finished" in new WithMiningActor {
+  "A Mining actor" should "notify the BlockChainActor with the new block when a mining request is finished" in new WithMiningActor {
 
     Given("a worker that immediately returns a block")
     workerProbe.setAutoPilot( (sender: ActorRef, msg: Any) => msg match {
@@ -42,19 +46,15 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
         TestActor.NoAutoPilot
     })
 
-    When("we register ourself as a peer")
-    miningActor ! HandShake
-
     When("a mining request is sent")
     val miningRequest = MineBlock(Seq(BlockMessage("testBlock")))
     miningActor ! miningRequest
 
-
     Then("we expect to also get a mining request as a peer")
-    expectMsg(miningRequest)
+    peerToPeerProbe.expectMsg(BroadcastRequest(miningRequest))
 
     Then("we expect to be notified when the block is found.")
-    expectMsgPF() {
+    blockChainProbe.expectMsgPF() {
       case ResponseBlock(Block(_, _, _, Seq(BlockMessage(data, _)), _, _ )) => data shouldBe "testBlock"
     }
 
@@ -106,12 +106,9 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   it should "forward any mining requests to all peers" in new WithMiningActor {
     val probe = TestProbe()
     val blockMessages = Seq(BlockMessage("testBlock"))
-    miningActor ! ResolvedPeer(probe.ref)
     miningActor ! MineBlock(blockMessages)
 
-    probe.expectMsg(HandShake)
-    probe.expectMsg(GetPeers)
-    probe.expectMsg(MineBlock(blockMessages))
+    peerToPeerProbe.expectMsg(BroadcastRequest(MineBlock(blockMessages)))
   }
 
 
@@ -123,7 +120,7 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
       case MiningWorker.MineBlock(_, Seq(testMessage), 0, _) => assert(testMessage.data == "bla")
     }
 
-    miningActor ! BlockChainInvalidated
+    miningActor ! BlockChainChanged(BlockChain().addMessage("bla").addMessage("die").addMessage("bla"))
 
     workerProbe.expectMsg(StopMining)
   }

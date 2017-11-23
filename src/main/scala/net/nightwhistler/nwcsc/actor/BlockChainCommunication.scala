@@ -1,9 +1,10 @@
-package net.nightwhistler.nwcsc.blockchain
+package net.nightwhistler.nwcsc.actor
 
-import akka.actor.Actor
+import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.Logger
-import net.nightwhistler.nwcsc.actor.CompositeActor
-import net.nightwhistler.nwcsc.p2p.PeerToPeer
+import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock}
+import net.nightwhistler.nwcsc.actor.PeerToPeer.BroadcastRequest
+import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain}
 
 import scala.util.{Failure, Success}
 
@@ -19,23 +20,27 @@ object BlockChainCommunication {
   case class ResponseBlocks(blocks: Seq[Block])
   case class ResponseBlock(block: Block)
 
+  def props( blockChain: BlockChain, peerToPeer: ActorRef ) =
+    Props(new BlockChainCommunication(blockChain, peerToPeer))
+
 }
 
-trait BlockChainCommunication {
-  this: PeerToPeer with CompositeActor =>
+class BlockChainCommunication( var blockChain: BlockChain, peerToPeer: ActorRef) extends Actor {
 
   import BlockChainCommunication._
 
+  val miningActor = context.actorOf(Mining.props(blockChain, self, peerToPeer ))
+
   val logger = Logger("PeerToPeerCommunication")
 
-  var blockChain: BlockChain
-
-  receiver {
+  override def receive = {
     case QueryLatest => sender() ! responseLatest
     case QueryAll => sender() ! responseBlockChain
 
     case ResponseBlock(block) => handleNewBlock(block)
     case ResponseBlocks(blocks) => handleBlockChainResponse(blocks)
+
+    case mineRequest: MineBlock => miningActor ! mineRequest
   }
 
   def handleNewBlock( block: Block ): Unit = {
@@ -47,12 +52,13 @@ trait BlockChainCommunication {
       blockChain.addBlock(block) match {
         case Success(newChain) =>
           blockChain = newChain
-          broadcast(responseLatest)
+          peerToPeer ! BroadcastRequest(responseLatest)
+          miningActor ! BlockChainChanged(blockChain)
         case Failure(e) => logger.error("Refusing to add new block", e)
       }
     } else {
       logger.info("We have to query the chain from our peer")
-      broadcast(QueryAll)
+      peerToPeer ! BroadcastRequest(QueryAll)
     }
   }
 
@@ -71,7 +77,8 @@ trait BlockChainCommunication {
         blockChain.replaceBlocks(receivedBlocks) match {
           case Success(newChain) =>
             blockChain = newChain
-            broadcast(responseBlockChain)
+            peerToPeer ! BroadcastRequest(responseBlockChain)
+            miningActor ! BlockChainChanged(blockChain)
           case Failure(s) => logger.error("Rejecting received chain.", s)
         }
     }

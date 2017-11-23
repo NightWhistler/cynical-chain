@@ -5,10 +5,10 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.testkit.{TestActor, TestKitBase, TestProbe}
 import com.typesafe.scalalogging.Logger
-import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlocks}
-import net.nightwhistler.nwcsc.blockchain.Mining.MineBlock
-import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain, BlockMessage, GenesisBlock}
-import net.nightwhistler.nwcsc.p2p.PeerToPeer.{AddPeer, GetPeers, Peers}
+import net.nightwhistler.nwcsc.actor.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlocks}
+import net.nightwhistler.nwcsc.actor.Mining.MineBlock
+import net.nightwhistler.nwcsc.actor.PeerToPeer.{AddPeer, GetPeers, Peers}
+import net.nightwhistler.nwcsc.blockchain.{Block, BlockMessage, GenesisBlock}
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.ExecutionContext
@@ -22,8 +22,11 @@ class RestInterfaceTest extends FlatSpec with ScalatestRouteTest with TestKitBas
 
   trait RestInterfaceFixture extends RestInterface {
     val testProbe = TestProbe()
+    val peerToPeerProbe = TestProbe()
 
     override val blockChainActor: ActorRef = testProbe.ref
+    override val peerToPeerActor: ActorRef = peerToPeerProbe.ref
+
     override val logger = Logger("TestLogger")
     override implicit val executionContext: ExecutionContext = ExecutionContext.global
   }
@@ -55,7 +58,7 @@ class RestInterfaceTest extends FlatSpec with ScalatestRouteTest with TestKitBas
   }
 
   it should "retrieve all peers for /peers" in new RestInterfaceFixture {
-    testProbe.setAutoPilot { (sender: ActorRef, msg: Any) => msg match {
+    peerToPeerProbe.setAutoPilot { (sender: ActorRef, msg: Any) => msg match {
 
       case GetPeers =>
         sender ! Peers(Seq("PeerOne"))
@@ -70,7 +73,7 @@ class RestInterfaceTest extends FlatSpec with ScalatestRouteTest with TestKitBas
 
   it should "add a new peer for /addPeer" in new RestInterfaceFixture {
     Post("/addPeer", HttpEntity(ContentTypes.`text/html(UTF-8)`, "TestPeer")) ~> routes ~> check {
-      testProbe.expectMsg(AddPeer("TestPeer"))
+      peerToPeerProbe.expectMsg(AddPeer("TestPeer"))
     }
   }
 

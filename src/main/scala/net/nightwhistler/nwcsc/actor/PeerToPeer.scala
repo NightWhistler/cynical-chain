@@ -1,14 +1,14 @@
-package net.nightwhistler.nwcsc.p2p
+package net.nightwhistler.nwcsc.actor
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{Actor, ActorRef, ActorSelection, Terminated}
-import akka.pattern.pipe
+import akka.actor.{Actor, ActorRef, Props, Terminated}
 import akka.util.Timeout
 import com.typesafe.scalalogging.Logger
-import net.nightwhistler.nwcsc.actor.CompositeActor
-import net.nightwhistler.nwcsc.p2p.PeerToPeer._
+import net.nightwhistler.nwcsc.actor.PeerToPeer._
+import akka.pattern.pipe
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
 /**
@@ -25,22 +25,25 @@ object PeerToPeer {
   case object GetPeers
 
   case object HandShake
+
+  case class BroadcastRequest(message: Any)
+
+  def props(implicit ec: ExecutionContext) = Props(new PeerToPeer)
 }
 
-trait PeerToPeer {
-  this: CompositeActor =>
+class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
 
   implicit val timeout = Timeout(Duration(5, TimeUnit.SECONDS))
   implicit val executionContext = context.system.dispatcher
 
-  val logger: Logger
+  val logger: Logger = Logger(classOf[PeerToPeer])
   var peers: Set[ActorRef] = Set.empty
 
-  def broadcast(message: Any ): Unit = {
-    peers.foreach( _ ! message )
-  }
+  def broadcast( message: Any ) = peers.foreach( _ ! message )
 
-  receiver {
+  override def receive = {
+
+    case BroadcastRequest(message) => broadcast(message)
 
     case AddPeer(peerAddress) =>
       logger.debug(s"Got request to add peer ${peerAddress}")

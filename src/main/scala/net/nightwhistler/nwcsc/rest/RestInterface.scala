@@ -9,10 +9,10 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.scalalogging.Logger
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
-import net.nightwhistler.nwcsc.blockchain.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlocks}
-import net.nightwhistler.nwcsc.blockchain.Mining.MineBlock
+import net.nightwhistler.nwcsc.actor.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlocks}
+import net.nightwhistler.nwcsc.actor.Mining.MineBlock
+import net.nightwhistler.nwcsc.actor.PeerToPeer.{AddPeer, GetPeers, Peers}
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockMessage, GenesisBlock}
-import net.nightwhistler.nwcsc.p2p.PeerToPeer.{AddPeer, GetPeers, Peers}
 import org.json4s.JsonAST.JString
 import org.json4s.{CustomSerializer, DefaultFormats, Formats, Serializer, native}
 
@@ -31,6 +31,8 @@ class BigIntHexSerializer extends CustomSerializer[BigInt](format => ( {
 trait RestInterface extends Json4sSupport {
 
   val blockChainActor: ActorRef
+  val peerToPeerActor: ActorRef
+
   val logger: Logger
 
   implicit val serialization = native.Serialization
@@ -54,7 +56,7 @@ trait RestInterface extends Json4sSupport {
         complete(chain)
       }~
       path("peers") {
-        complete( (blockChainActor ? GetPeers).mapTo[Peers] )
+        complete( (peerToPeerActor ? GetPeers).mapTo[Peers] )
       }~
       path("latestBlock") {
         complete( (blockChainActor ? QueryLatest).map {
@@ -75,7 +77,7 @@ trait RestInterface extends Json4sSupport {
     path("addPeer") {
       entity(as[String]) { peerAddress =>
         logger.info(s"Got request to add new peer $peerAddress")
-        blockChainActor ! AddPeer(peerAddress)
+        peerToPeerActor ! AddPeer(peerAddress)
         complete(s"Added peer $peerAddress")
       }
     }

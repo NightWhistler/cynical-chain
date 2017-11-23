@@ -1,19 +1,14 @@
 package net.nightwhistler.nwcsc.p2p
 
-import akka.actor.{Actor, ActorSystem, Props}
+import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import com.typesafe.scalalogging.Logger
-import net.nightwhistler.nwcsc.actor.CompositeActor
-import net.nightwhistler.nwcsc.p2p.PeerToPeer._
+import net.nightwhistler.nwcsc.actor.PeerToPeer
+import net.nightwhistler.nwcsc.actor.PeerToPeer._
 import org.scalatest._
 
 /**
   * Created by alex on 20-6-17.
   */
-
-class PeerToPeerActor extends CompositeActor with PeerToPeer {
-  val logger = Logger("PeerToPeerActor")
-}
 
 class PeerToPeerTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   with ImplicitSender with GivenWhenThen with BeforeAndAfterAll with Matchers {
@@ -22,9 +17,9 @@ class PeerToPeerTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLik
     TestKit.shutdownActorSystem(system)
   }
 
-
   trait WithPeerToPeerActor {
-    val peerToPeerActor = system.actorOf(Props[PeerToPeerActor])
+    import system.dispatcher
+    val peerToPeerActor = system.actorOf(PeerToPeer.props)
   }
 
   "A PeerToPeer actor " should " start with an empty set of peers" in new WithPeerToPeerActor {

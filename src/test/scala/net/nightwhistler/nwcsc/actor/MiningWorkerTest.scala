@@ -4,7 +4,6 @@ import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props, Terminated}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import net.nightwhistler.nwcsc.actor.MiningWorker.MineResult
 import net.nightwhistler.nwcsc.blockchain._
-import net.nightwhistler.nwcsc.p2p.PeerToPeer
 import org.scalatest._
 
 /**
