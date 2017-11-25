@@ -8,11 +8,12 @@ import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.actor.PeerToPeer._
 import akka.pattern.pipe
 import net.nightwhistler.nwcsc.actor.BlockChainActor._
-import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineResult}
+import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock, MineResult}
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
+import akka.pattern.ask
 
 object PeerToPeer {
 
@@ -52,7 +53,9 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
 
     case BlockChainUpdated(blockChain) => miningActor ! BlockChainChanged(blockChain)
 
-    case add: AddMessages => miningActor ! add
+    case AddMessages(messages) =>
+      (blockChainActor ? GetBlockChain).mapTo[CurrentBlockChain]
+        .map( chain => MineBlock(chain.blockChain, messages) ) pipeTo miningActor
 
     case MineResult(block) =>
       logger.debug(s"Received a valid block from the miner for index ${block.index}, adding it to the chain.")
