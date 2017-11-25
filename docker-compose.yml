@@ -3,7 +3,7 @@ services:
     node1: 
         image: cynical-chain:1
         environment:
-            - JAVA_OPTS=-Dakka.remote.netty.tcp.hostname=node1
+            - JAVA_OPTS=-Dblockchain.nodeName=node1 -Dakka.remote.netty.tcp.hostname=node1
         ports:
             - "9000:9000"
             
@@ -12,7 +12,7 @@ services:
         links: 
             - node1:node1
         environment:
-            - JAVA_OPTS=-Dblockchain.seedHost=akka.tcp://BlockChain@node1:2552/user/peerToPeerActor
+            - JAVA_OPTS=-Dblockchain.nodeName=node2 -Dblockchain.seedHost=akka.tcp://BlockChain@node1:2552/user/peerToPeerActor
         ports:
             - "9001:9000"
     node3:
@@ -20,7 +20,7 @@ services:
         links: 
             - node1:node1
         environment:
-            - JAVA_OPTS=-Dblockchain.seedHost=akka.tcp://BlockChain@node1:2552/user/peerToPeerActor
+            - JAVA_OPTS=-Dblockchain.nodeName=node3 -Dblockchain.seedHost=akka.tcp://BlockChain@node1:2552/user/peerToPeerActor
         ports:
             - "9002:9000"
     node4:
@@ -28,7 +28,7 @@ services:
         links: 
             - node1:node1
         environment:
-            - JAVA_OPTS=-Dblockchain.seedHost=akka.tcp://BlockChain@node1:2552/user/peerToPeerActor
+            - JAVA_OPTS=-Dblockchain.nodeName=node4 -Dblockchain.seedHost=akka.tcp://BlockChain@node1:2552/user/peerToPeerActor
         ports:
             - "9003:9000"
 

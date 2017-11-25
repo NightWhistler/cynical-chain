@@ -23,7 +23,7 @@ class MiningWorkerTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecL
     miningWorker ! MiningWorker.MineBlock(blockChain, Seq(message))
 
     expectMsgPF() {
-      case MineResult(Block(_, _, _, Seq(msg), _, _)) => msg.data shouldEqual "bla"
+      case MineResult(Block(_, _, _, _, Seq(msg), _, _)) => msg.data shouldEqual "bla"
     }
   }
 

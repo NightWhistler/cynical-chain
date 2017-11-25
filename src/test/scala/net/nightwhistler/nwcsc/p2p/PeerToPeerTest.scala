@@ -20,12 +20,14 @@ class PeerToPeerTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLik
     val miningProbe = TestProbe()
     val blockChainProbe = TestProbe()
 
-    class TestMiningActor extends PeerToPeer {
+    class TestPeerToPeer extends PeerToPeer {
       override val miningActor = miningProbe.ref
       override val blockChainActor = blockChainProbe.ref
+
+      override val myNodeName = "TestP2P"
     }
 
-    val peerToPeerActor = system.actorOf(Props(new TestMiningActor))
+    val peerToPeerActor = system.actorOf(Props(new TestPeerToPeer))
   }
 
   "A PeerToPeer actor " should " start with an empty set of peers" in new WithPeerToPeerActor {
@@ -44,7 +46,7 @@ class PeerToPeerTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLik
   }
 
   it should "add us as a peer when we send a handshake" in new WithPeerToPeerActor {
-    peerToPeerActor ! HandShake
+    peerToPeerActor ! HandShake("test")
 
     peerToPeerActor ! GetPeers
 
@@ -59,7 +61,7 @@ class PeerToPeerTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLik
     val peerProbe = TestProbe()
 
     peerToPeerActor ! AddPeer(peerProbe.ref.path.toStringWithoutAddress)
-    peerProbe.expectMsg(HandShake)
+    peerProbe.expectMsg(HandShake("TestP2P"))
     peerProbe.expectMsg(GetPeers)
 
     When("we register 2 new peers")

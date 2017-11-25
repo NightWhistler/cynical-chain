@@ -14,6 +14,7 @@ import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import akka.pattern.ask
+import net.nightwhistler.nwcsc.BlockChainConfig
 
 object PeerToPeer {
 
@@ -25,7 +26,7 @@ object PeerToPeer {
 
   case object GetPeers
 
-  case object HandShake
+  case class HandShake(nodeName: String)
 
   case class BroadcastRequest(message: Any)
 
@@ -44,6 +45,8 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
 
   val logger: Logger = Logger(classOf[PeerToPeer])
   var peers: Set[ActorRef] = Set.empty
+
+  val myNodeName = BlockChainConfig.nodeName
 
   def broadcast( message: Any ) = peers.foreach( _ ! message )
 
@@ -75,7 +78,7 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
         context.watch(newPeerRef)
 
         //Introduce ourselves
-        newPeerRef ! HandShake
+        newPeerRef ! HandShake(myNodeName)
 
         //Ask for its friends
         newPeerRef ! GetPeers
@@ -91,8 +94,8 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
 
     case Peers(peers) => peers.foreach( self ! AddPeer(_))
 
-    case HandShake =>
-      logger.debug(s"Received a handshake from ${sender().path.toStringWithoutAddress}")
+    case HandShake(fromNode) =>
+      logger.debug(s"Received a handshake from $fromNode at ${sender().path.toStringWithoutAddress}")
       peers += sender()
 
     case GetPeers => sender() ! Peers(peers.toSeq.map(_.path.toSerializationFormat))

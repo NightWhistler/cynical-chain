@@ -2,6 +2,7 @@ package net.nightwhistler.nwcsc.actor
 
 import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.Logger
+import net.nightwhistler.nwcsc.BlockChainConfig
 import net.nightwhistler.nwcsc.actor.Mining.MineResult
 import net.nightwhistler.nwcsc.actor.MiningWorker.{MineBlock, StopMining}
 import net.nightwhistler.nwcsc.blockchain.{BlockChain, BlockMessage}
@@ -12,7 +13,7 @@ object MiningWorker {
 
   case object StopMining
 
-  def props( reportBackTo: ActorRef ): Props = Props(classOf[MiningWorker], reportBackTo)
+  def props( reportBackTo: ActorRef): Props = Props(new MiningWorker(reportBackTo))
 }
 
 /*
@@ -23,6 +24,7 @@ Send a message per none, and use become() when we get a request to stop.
 class MiningWorker(reportBackTo: ActorRef) extends Actor {
 
   val logger = Logger(classOf[MiningWorker])
+  val nodeName = BlockChainConfig.nodeName
 
   var keepMining = true
 
@@ -36,7 +38,7 @@ class MiningWorker(reportBackTo: ActorRef) extends Actor {
       }
 
       startNonse.until(startNonse+100).flatMap { nonse =>
-        blockChain.attemptBlock(messages, nonse)
+        blockChain.attemptBlock(messages, nonse, nodeName)
       }.headOption match {
         case Some(block) =>
           logger.debug(s"Found a block with index ${block.index} after ${new java.util.Date().getTime - timeStamp} ms and ${block.nonse +1} attempts.")

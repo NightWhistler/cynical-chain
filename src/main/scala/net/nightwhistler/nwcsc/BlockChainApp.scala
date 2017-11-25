@@ -10,8 +10,20 @@ import net.nightwhistler.nwcsc.actor.PeerToPeer.AddPeer
 import net.nightwhistler.nwcsc.blockchain.BlockChain
 import net.nightwhistler.nwcsc.rest.RestInterface
 
+object BlockChainConfig {
+  val config = ConfigFactory.load()
+
+  val seedHost = config.getString("blockchain.seedHost")
+  val nodeName = config.getString("blockchain.nodeName")
+
+  val httpInterface = config.getString("http.interface")
+  val httpPort = config.getInt("http.port")
+}
 
 object BlockChainApp extends App with RestInterface {
+
+  import BlockChainConfig._
+  val logger = Logger("WebServer")
 
   implicit val system = ActorSystem("BlockChain")
   implicit val materializer = ActorMaterializer()
@@ -19,10 +31,7 @@ object BlockChainApp extends App with RestInterface {
 
   val peerToPeerActor = system.actorOf(PeerToPeer.props, "peerToPeerActor")
 
-  val config = ConfigFactory.load()
-  val logger = Logger("WebServer")
-
-  val seedHost = config.getString("blockchain.seedHost")
+  logger.info(s"Node ${nodeName} coming online.")
 
   if ( ! seedHost.isEmpty ) {
     logger.info(s"Attempting to connect to seed-host ${seedHost}")
@@ -31,5 +40,5 @@ object BlockChainApp extends App with RestInterface {
     logger.info("No seed host configured, waiting for messages.")
   }
 
-  Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))
+  Http().bindAndHandle(routes, httpInterface, httpPort)
 }

@@ -9,16 +9,12 @@ import scala.annotation.tailrec
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-/**
-  * Created by alex on 13-6-17.
-  */
-
 case class BlockMessage( data: String, id: String = UUID.randomUUID().toString)
 
-object GenesisBlock extends Block(0, BigInt(0), 1497359352, Seq(BlockMessage("74dd70aa-2ddb-4aa2-8f95-ffc3b5cebad1","Genesis block")), 0,
+object GenesisBlock extends Block(0, BigInt(0), 1497359352, "Genesis", Seq(BlockMessage("74dd70aa-2ddb-4aa2-8f95-ffc3b5cebad1","Genesis block")), 0,
   BigInt("2b33684ac1ce0a93a54410de84d4114a3882362bcec35a2a9b588630811ae92b", 16))
 
-case class Block(index: Long, previousHash: BigInt, timestamp: Long, messages: Seq[BlockMessage], nonse: Long, hash: BigInt)
+case class Block(index: Long, previousHash: BigInt, timestamp: Long, foundBy: String, messages: Seq[BlockMessage], nonse: Long, hash: BigInt)
 
 object BlockChain {
 
@@ -41,7 +37,7 @@ case class BlockChain private(val blocks: Seq[Block], difficultyFunction: Diffic
 
   def addMessage(data: String ): BlockChain = addBlock(Seq(BlockMessage(data)))
 
-  def addBlock(messages: Seq[BlockMessage] ) = new BlockChain(generateNextBlock(messages) +: blocks, difficultyFunction, hashFunction)
+  def addBlock(messages: Seq[BlockMessage]) = new BlockChain(generateNextBlock(messages) +: blocks, difficultyFunction, hashFunction)
 
   def contains( blockMessage: BlockMessage ) = blocks.find( b => b.messages.contains(blockMessage) ).isDefined
 
@@ -68,18 +64,18 @@ case class BlockChain private(val blocks: Seq[Block], difficultyFunction: Diffic
   def firstBlock: Block = blocks.last
   def latestBlock: Block = blocks.head
 
-  def generateNextBlock(messages: Seq[BlockMessage] ): Block = {
+  def generateNextBlock(messages: Seq[BlockMessage], nodeName: String = ""): Block = {
     val timeBefore = new Date().getTime
-    val block = generateNextBlock(messages, 0)
+    val block = generateNextBlock(messages, 0, nodeName)
     logger.debug(s"Found block in ${new Date().getTime - timeBefore} ms after ${block.nonse +1} tries.")
     block
   }
 
   @tailrec
-  private def generateNextBlock( messages: Seq[BlockMessage], nonse: Long ): Block = {
-    attemptBlock(messages, nonse) match {
+  private def generateNextBlock( messages: Seq[BlockMessage], nonse: Long, nodeName: String ): Block = {
+    attemptBlock(messages, nonse, nodeName) match {
       case Some(block) => block
-      case None => generateNextBlock(messages, nonse +1)
+      case None => generateNextBlock(messages, nonse +1, nodeName)
     }
   }
 
@@ -94,19 +90,15 @@ case class BlockChain private(val blocks: Seq[Block], difficultyFunction: Diffic
 
 
 
-  def attemptBlock(messages: Seq[BlockMessage], nonse: Long ): Option[Block] = {
+  def attemptBlock(messages: Seq[BlockMessage], nonse: Long, nodeName: String ): Option[Block] = {
     val previousBlock = latestBlock
     val nextIndex = previousBlock.index + 1
     val nextTimestamp = new Date().getTime() / 1000
 
-    val tempBlock = Block(nextIndex, previousBlock.hash, nextTimestamp, messages, nonse, 0)
+    val tempBlock = Block(nextIndex, previousBlock.hash, nextTimestamp, nodeName, messages, nonse, 0)
     val block = tempBlock.copy( hash = hashFunction(tempBlock) )
 
-    if ( validBlock(block) ) {
-      Some(block)
-    } else {
-      None
-    }
+    Some(block).filter(validBlock)
   }
 
   def validBlock(newBlock: Block): Boolean = validChain( newBlock +: blocks )

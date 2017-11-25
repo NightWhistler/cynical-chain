@@ -73,7 +73,7 @@ class RestInterfaceTest extends FlatSpec with ScalatestRouteTest with TestKitBas
   it should "add a new block for /mineBlock" in new RestInterfaceFixture {
     peerToPeerProbe.setAutoPilot { (sender: ActorRef, msg: Any) => msg match {
       case AddMessages(data) =>
-        sender ! NewBlock(Block(0, 0, 0, data, 0, 1))
+        sender ! NewBlock(Block(0, 0, 0, "someone", data, 0, 1))
         TestActor.NoAutoPilot
       }
     }
