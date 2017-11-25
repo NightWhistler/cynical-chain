@@ -2,19 +2,17 @@ package net.nightwhistler.nwcsc.blockchain
 
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, PoisonPill, Props}
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
-import net.nightwhistler.nwcsc.actor.BlockChainCommunication.ResponseBlock
-import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock}
-import net.nightwhistler.nwcsc.actor.MiningWorker.{MineResult, StopMining}
-import net.nightwhistler.nwcsc.actor.PeerToPeer.{BroadcastRequest, GetPeers, HandShake, ResolvedPeer}
+import net.nightwhistler.nwcsc.actor.BlockChainActor.{AddMessages, CurrentBlockChain, GetBlockChain, NewBlock}
+import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock, MineResult}
+import net.nightwhistler.nwcsc.actor.MiningWorker.StopMining
+import net.nightwhistler.nwcsc.actor.PeerToPeer.BroadcastRequest
 import net.nightwhistler.nwcsc.actor._
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, GivenWhenThen, Matchers}
 
-/**
-  * Created by alex on 20-6-17.
-  */
+import scala.concurrent.ExecutionContext
 
-class TestMiningActor(dummyWorker: () => ActorRef, val myBlockChain: BlockChain, blockChainCommunication: ActorRef,
-                      peerToPeer: ActorRef) extends Mining( myBlockChain, blockChainCommunication, peerToPeer ) {
+
+class TestMiningActor(dummyWorker: () => ActorRef, peerToPeer: ActorRef)(implicit ec: ExecutionContext) extends Mining( peerToPeer ) {
   override def createWorker(factory: ActorRefFactory): ActorRef = dummyWorker()
 }
 
@@ -26,52 +24,29 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   }
 
   trait WithMiningActor {
+    import system.dispatcher
+
     val probeProvider = () => workerProbe.ref
     var workerProbe = TestProbe()
 
     var blockChain = BlockChain(NoDifficulty)
-    val blockChainProbe = TestProbe()
     val peerToPeerProbe = TestProbe()
 
-    val miningActor = system.actorOf(Props(new TestMiningActor(probeProvider, blockChain,
-      blockChainProbe.ref, peerToPeerProbe.ref)))
-  }
-
-  "A Mining actor" should "notify the BlockChainActor with the new block when a mining request is finished" in new WithMiningActor {
-
-    Given("a worker that immediately returns a block")
-    workerProbe.setAutoPilot( (sender: ActorRef, msg: Any) => msg match {
-      case MiningWorker.MineBlock(_, messages, 0, _) =>
-        sender ! MineResult(blockChain.addBlock(messages).latestBlock)
-        TestActor.NoAutoPilot
-    })
-
-    When("a mining request is sent")
-    val miningRequest = MineBlock(Seq(BlockMessage("testBlock")))
-    miningActor ! miningRequest
-
-    Then("we expect to also get a mining request as a peer")
-    peerToPeerProbe.expectMsg(BroadcastRequest(miningRequest))
-
-    Then("we expect to be notified when the block is found.")
-    blockChainProbe.expectMsgPF() {
-      case ResponseBlock(Block(_, _, _, Seq(BlockMessage(data, _)), _, _ )) => data shouldBe "testBlock"
-    }
-
+    val miningActor = system.actorOf(Props(new TestMiningActor(probeProvider, peerToPeerProbe.ref)))
   }
 
   it should "send all outstanding messages to a new worker" in new WithMiningActor {
     Given("a situation where 2 mining requests come in")
 
     When("the first request comes in")
-    miningActor ! MineBlock(Seq(BlockMessage("message 1")))
+    miningActor ! MineBlock(blockChain, Seq(BlockMessage("message 1")))
     Then("a worker should be started for just that request")
     workerProbe.expectMsgPF() {
       case MiningWorker.MineBlock(_, Seq(BlockMessage(data,_)), _, _ ) => data shouldBe "message 1"
     }
 
     When("the second request comes in while the first isn't finished yet")
-    miningActor ! MineBlock(Seq(BlockMessage("message 2")))
+    miningActor ! MineBlock(blockChain, Seq(BlockMessage("message 2")))
     Then("a new worker should be started which tries to add both messages")
     workerProbe.expectMsgPF() {
       case MiningWorker.MineBlock(_, messages, _, _) =>
@@ -86,7 +61,9 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   it should "keep spawning workers until there is no more work to do" in new WithMiningActor {
 
     Given("we have a worker running")
-    miningActor ! MineBlock(Seq(BlockMessage("Bla")))
+    miningActor ! Mining.MineBlock(blockChain, Seq(BlockMessage("Bla")))
+    peerToPeerProbe.expectMsgClass(classOf[BroadcastRequest])
+
     workerProbe.expectMsgPF() {
       case MiningWorker.MineBlock(_, Seq(BlockMessage(msg,_)), 0, _) => msg shouldEqual "Bla"
     }
@@ -97,6 +74,9 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
     //Spawn a new workerprobe to be returned
     workerProbe = TestProbe()
 
+    peerToPeerProbe.expectMsg(GetBlockChain)
+    peerToPeerProbe.reply(CurrentBlockChain(blockChain))
+
     Then("a new worker should be spawned for all the remaining messages.")
     workerProbe.expectMsgPF() {
       case MiningWorker.MineBlock(_, Seq(BlockMessage(msg,_)), 0, _) => msg shouldEqual "Bla"
@@ -106,15 +86,15 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   it should "forward any mining requests to all peers" in new WithMiningActor {
     val probe = TestProbe()
     val blockMessages = Seq(BlockMessage("testBlock"))
-    miningActor ! MineBlock(blockMessages)
+    miningActor ! MineBlock(blockChain, blockMessages)
 
-    peerToPeerProbe.expectMsg(BroadcastRequest(MineBlock(blockMessages)))
+    peerToPeerProbe.expectMsg(BroadcastRequest(AddMessages(blockMessages)))
   }
 
 
   it should "stop all workers when the blockchain changes" in new WithMiningActor {
     val testMessage = BlockMessage("bla")
-    miningActor ! MineBlock(Seq(testMessage))
+    miningActor ! MineBlock(blockChain, Seq(testMessage))
 
     workerProbe.expectMsgPF() {
       case MiningWorker.MineBlock(_, Seq(testMessage), 0, _) => assert(testMessage.data == "bla")

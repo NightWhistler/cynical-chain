@@ -1,14 +1,12 @@
 package net.nightwhistler.nwcsc.p2p
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
+import net.nightwhistler.nwcsc.actor.Mining.BlockChainChanged
 import net.nightwhistler.nwcsc.actor.PeerToPeer
 import net.nightwhistler.nwcsc.actor.PeerToPeer._
+import net.nightwhistler.nwcsc.blockchain.{BlockChain, NoDifficulty}
 import org.scalatest._
-
-/**
-  * Created by alex on 20-6-17.
-  */
 
 class PeerToPeerTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   with ImplicitSender with GivenWhenThen with BeforeAndAfterAll with Matchers {
@@ -19,7 +17,15 @@ class PeerToPeerTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLik
 
   trait WithPeerToPeerActor {
     import system.dispatcher
-    val peerToPeerActor = system.actorOf(PeerToPeer.props)
+    val miningProbe = TestProbe()
+    val blockChainProbe = TestProbe()
+
+    class TestMiningActor extends PeerToPeer {
+      override val miningActor = miningProbe.ref
+      override val blockChainActor = blockChainProbe.ref
+    }
+
+    val peerToPeerActor = system.actorOf(Props(new TestMiningActor))
   }
 
   "A PeerToPeer actor " should " start with an empty set of peers" in new WithPeerToPeerActor {
@@ -64,6 +70,14 @@ class PeerToPeerTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLik
     peerProbe.expectMsg(AddPeer(probes(0)))
     peerProbe.expectMsg(AddPeer(probes(1)))
 
+  }
+
+  it should "notify the mining actor when the blockchain changes." in new WithPeerToPeerActor {
+
+    val blockChain = BlockChain(NoDifficulty)
+
+    peerToPeerActor ! BlockChainUpdated(blockChain)
+    miningProbe.expectMsg(BlockChainChanged(blockChain))
   }
 
 }

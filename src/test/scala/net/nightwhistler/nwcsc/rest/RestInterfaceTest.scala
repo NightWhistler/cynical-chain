@@ -5,37 +5,30 @@ import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.testkit.{TestActor, TestKitBase, TestProbe}
 import com.typesafe.scalalogging.Logger
-import net.nightwhistler.nwcsc.actor.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlocks}
-import net.nightwhistler.nwcsc.actor.Mining.MineBlock
+import net.nightwhistler.nwcsc.actor.BlockChainActor._
 import net.nightwhistler.nwcsc.actor.PeerToPeer.{AddPeer, GetPeers, Peers}
-import net.nightwhistler.nwcsc.blockchain.{Block, BlockMessage, GenesisBlock}
+import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain, BlockMessage, GenesisBlock}
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.ExecutionContext
-
-/**
-  * Created by alex on 17-6-17.
-  */
 
 class RestInterfaceTest extends FlatSpec with ScalatestRouteTest with TestKitBase
   with Matchers {
 
   trait RestInterfaceFixture extends RestInterface {
-    val testProbe = TestProbe()
     val peerToPeerProbe = TestProbe()
 
-    override val blockChainActor: ActorRef = testProbe.ref
     override val peerToPeerActor: ActorRef = peerToPeerProbe.ref
 
     override val logger = Logger("TestLogger")
     override implicit val executionContext: ExecutionContext = ExecutionContext.global
   }
 
-  "A route " should "get the blockchain from the blockchain actor for /blocks" in new RestInterfaceFixture {
+  "A route " should "get the blockchain from the peertopeer actor for /blocks" in new RestInterfaceFixture {
 
-    testProbe.setAutoPilot { (sender: ActorRef, msg: Any) => msg match {
-      case QueryAll =>
-        sender ! ResponseBlocks(Seq(GenesisBlock))
+    peerToPeerProbe.setAutoPilot { (sender: ActorRef, msg: Any) => msg match {
+      case GetBlockChain =>
+        sender ! CurrentBlockChain(BlockChain())
         TestActor.NoAutoPilot
       }
     }
@@ -46,9 +39,9 @@ class RestInterfaceTest extends FlatSpec with ScalatestRouteTest with TestKitBas
   }
 
   it should "return the latest block for /latestBlock" in new RestInterfaceFixture {
-    testProbe.setAutoPilot { (sender: ActorRef, msg: Any) => msg match {
+    peerToPeerProbe.setAutoPilot { (sender: ActorRef, msg: Any) => msg match {
       case QueryLatest =>
-        sender ! ResponseBlock(GenesisBlock)
+        sender ! NewBlock(GenesisBlock)
         TestActor.NoAutoPilot
       }
     }
@@ -78,9 +71,9 @@ class RestInterfaceTest extends FlatSpec with ScalatestRouteTest with TestKitBas
   }
 
   it should "add a new block for /mineBlock" in new RestInterfaceFixture {
-    testProbe.setAutoPilot { (sender: ActorRef, msg: Any) => msg match {
-      case MineBlock(data) =>
-        sender ! ResponseBlock(Block(0, 0, 0, data, 0, 1))
+    peerToPeerProbe.setAutoPilot { (sender: ActorRef, msg: Any) => msg match {
+      case AddMessages(data) =>
+        sender ! NewBlock(Block(0, 0, 0, data, 0, 1))
         TestActor.NoAutoPilot
       }
     }

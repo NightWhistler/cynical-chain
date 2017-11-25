@@ -2,45 +2,46 @@ package net.nightwhistler.nwcsc.actor
 
 import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.Logger
-import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock}
-import net.nightwhistler.nwcsc.actor.PeerToPeer.BroadcastRequest
-import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain}
+import net.nightwhistler.nwcsc.actor.PeerToPeer.{BlockChainUpdated, BroadcastRequest}
+import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain, BlockMessage}
 
 import scala.util.{Failure, Success}
 
-/**
-  * Created by alex on 14-6-17.
-  */
-
-object BlockChainCommunication {
+object BlockChainActor {
 
   case object QueryLatest
-  case object QueryAll
+  case class NewBlock(block: Block)
 
-  case class ResponseBlocks(blocks: Seq[Block])
-  case class ResponseBlock(block: Block)
+  case object QueryAll
+  case class NewBlockChain(blocks: Seq[Block])
+
+  case object GetBlockChain
+  case class CurrentBlockChain( blockChain: BlockChain )
+
+  case class AddMessages(messages: Seq[BlockMessage] )
+
+  def props( peerToPeer: ActorRef ) =
+    Props(new BlockChainActor(BlockChain(), peerToPeer))
 
   def props( blockChain: BlockChain, peerToPeer: ActorRef ) =
-    Props(new BlockChainCommunication(blockChain, peerToPeer))
-
+    Props(new BlockChainActor(blockChain, peerToPeer))
 }
 
-class BlockChainCommunication( var blockChain: BlockChain, peerToPeer: ActorRef) extends Actor {
+class BlockChainActor( var blockChain: BlockChain, peerToPeer: ActorRef) extends Actor {
 
-  import BlockChainCommunication._
-
-  val miningActor = context.actorOf(Mining.props(blockChain, self, peerToPeer ))
+  import BlockChainActor._
 
   val logger = Logger("PeerToPeerCommunication")
 
   override def receive = {
-    case QueryLatest => sender() ! responseLatest
-    case QueryAll => sender() ! responseBlockChain
+    case QueryLatest => sender() ! NewBlock(blockChain.latestBlock)
+    case QueryAll => sender() ! NewBlockChain(blockChain.blocks)
 
-    case ResponseBlock(block) => handleNewBlock(block)
-    case ResponseBlocks(blocks) => handleBlockChainResponse(blocks)
+    case GetBlockChain => sender() ! CurrentBlockChain(blockChain)
 
-    case mineRequest: MineBlock => miningActor ! mineRequest
+    case NewBlock(block) => handleNewBlock(block)
+    case NewBlockChain(blocks) => handleBlockChainResponse(blocks)
+
   }
 
   def handleNewBlock( block: Block ): Unit = {
@@ -52,8 +53,9 @@ class BlockChainCommunication( var blockChain: BlockChain, peerToPeer: ActorRef)
       blockChain.addBlock(block) match {
         case Success(newChain) =>
           blockChain = newChain
-          peerToPeer ! BroadcastRequest(responseLatest)
-          miningActor ! BlockChainChanged(blockChain)
+          peerToPeer ! BroadcastRequest(NewBlock(blockChain.latestBlock))
+          peerToPeer ! BlockChainUpdated(blockChain)
+
         case Failure(e) => logger.error("Refusing to add new block", e)
       }
     } else {
@@ -77,16 +79,14 @@ class BlockChainCommunication( var blockChain: BlockChain, peerToPeer: ActorRef)
         blockChain.replaceBlocks(receivedBlocks) match {
           case Success(newChain) =>
             blockChain = newChain
-            peerToPeer ! BroadcastRequest(responseBlockChain)
-            miningActor ! BlockChainChanged(blockChain)
+            //We never broadcast a whole chain, just the latest block.
+            peerToPeer ! BroadcastRequest(NewBlock(blockChain.latestBlock))
+            peerToPeer ! BlockChainUpdated(blockChain)
+
           case Failure(s) => logger.error("Rejecting received chain.", s)
         }
     }
   }
-
-  def responseLatest = ResponseBlock(blockChain.latestBlock)
-
-  def responseBlockChain = ResponseBlocks(blockChain.blocks)
 
 }
 

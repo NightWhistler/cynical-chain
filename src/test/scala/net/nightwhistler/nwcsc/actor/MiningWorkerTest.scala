@@ -1,14 +1,10 @@
 package net.nightwhistler.nwcsc.actor
 
-import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props, Terminated}
-import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import net.nightwhistler.nwcsc.actor.MiningWorker.MineResult
+import akka.actor.{ActorSystem, Terminated}
+import akka.testkit.{ImplicitSender, TestKit}
+import net.nightwhistler.nwcsc.actor.Mining.MineResult
 import net.nightwhistler.nwcsc.blockchain._
 import org.scalatest._
-
-/**
-  * Created by alex on 22-6-17.
-  */
 
 class MiningWorkerTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   with ImplicitSender with GivenWhenThen with BeforeAndAfterAll with Matchers {

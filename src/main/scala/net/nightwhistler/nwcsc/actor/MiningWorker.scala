@@ -2,22 +2,24 @@ package net.nightwhistler.nwcsc.actor
 
 import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.Logger
-import net.nightwhistler.nwcsc.actor.MiningWorker.{MineBlock, MineResult, StopMining}
-import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain, BlockMessage}
+import net.nightwhistler.nwcsc.actor.Mining.MineResult
+import net.nightwhistler.nwcsc.actor.MiningWorker.{MineBlock, StopMining}
+import net.nightwhistler.nwcsc.blockchain.{BlockChain, BlockMessage}
 
-/**
-  * Created by alex on 19-6-17.
-  */
 object MiningWorker {
-  case class MineBlock(blockChain: BlockChain, messages: Seq[BlockMessage], startNonse: Long = 0, timeStamp: Long = new java.util.Date().getTime )
-
-  case class MineResult(block: Block)
+  case class MineBlock(blockChain: BlockChain, messages: Seq[BlockMessage],
+                       startNonse: Long = 0, timeStamp: Long = new java.util.Date().getTime )
 
   case object StopMining
 
   def props( reportBackTo: ActorRef ): Props = Props(classOf[MiningWorker], reportBackTo)
 }
 
+/*
+Better strategy:
+
+Send a message per none, and use become() when we get a request to stop.
+ */
 class MiningWorker(reportBackTo: ActorRef) extends Actor {
 
   val logger = Logger("MiningActor")

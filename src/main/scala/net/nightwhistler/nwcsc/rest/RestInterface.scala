@@ -9,17 +9,13 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.typesafe.scalalogging.Logger
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
-import net.nightwhistler.nwcsc.actor.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlocks}
-import net.nightwhistler.nwcsc.actor.Mining.MineBlock
+import net.nightwhistler.nwcsc.actor.BlockChainActor._
 import net.nightwhistler.nwcsc.actor.PeerToPeer.{AddPeer, GetPeers, Peers}
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockMessage, GenesisBlock}
 import org.json4s.JsonAST.JString
-import org.json4s.{CustomSerializer, DefaultFormats, Formats, Serializer, native}
+import org.json4s.{CustomSerializer, DefaultFormats, Serializer, native}
 
 import scala.concurrent.{ExecutionContext, Future}
-/**
-  * Created by alex on 16-6-17.
-  */
 
 class BigIntHexSerializer extends CustomSerializer[BigInt](format => ( {
   case JString(s) => BigInt(s, 16)
@@ -30,7 +26,6 @@ class BigIntHexSerializer extends CustomSerializer[BigInt](format => ( {
 
 trait RestInterface extends Json4sSupport {
 
-  val blockChainActor: ActorRef
   val peerToPeerActor: ActorRef
 
   val logger: Logger
@@ -49,9 +44,9 @@ trait RestInterface extends Json4sSupport {
   val routes =
     get {
       path("blocks") {
-        val chain: Future[Seq[Block]] = (blockChainActor ? QueryAll).map {
+        val chain: Future[Seq[Block]] = (peerToPeerActor ? GetBlockChain).map {
           //This is a bit of a hack, since JSON4S doesn't serialize case objects well
-          case ResponseBlocks(blocks) => blocks.slice(0, blocks.length -1) :+ GenesisBlock.copy()
+          case CurrentBlockChain(blockChain) => blockChain.blocks.slice(0, blockChain.blocks.length -1) :+ GenesisBlock.copy()
         }
         complete(chain)
       }~
@@ -59,9 +54,9 @@ trait RestInterface extends Json4sSupport {
         complete( (peerToPeerActor ? GetPeers).mapTo[Peers] )
       }~
       path("latestBlock") {
-        complete( (blockChainActor ? QueryLatest).map {
-          case ResponseBlock(GenesisBlock) => GenesisBlock.copy()
-          case ResponseBlock(block) => block
+        complete( (peerToPeerActor ? QueryLatest).map {
+          case NewBlock(GenesisBlock) => GenesisBlock.copy()
+          case NewBlock(block) => block
         })
       }
     }~
@@ -70,7 +65,7 @@ trait RestInterface extends Json4sSupport {
        entity(as[String]) { data =>
          logger.info(s"Got request to add new block $data")
          val blockMessage = BlockMessage(data)
-         blockChainActor ! MineBlock(Seq(blockMessage))
+         peerToPeerActor ! AddMessages(Seq(blockMessage))
          complete(blockMessage)
       }
     }~

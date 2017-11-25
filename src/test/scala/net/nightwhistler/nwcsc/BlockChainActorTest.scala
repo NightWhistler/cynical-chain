@@ -1,18 +1,14 @@
 package net.nightwhistler.nwcsc
 
-import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import net.nightwhistler.nwcsc.actor.BlockChainCommunication.{QueryAll, QueryLatest, ResponseBlock, ResponseBlocks}
-import net.nightwhistler.nwcsc.actor.PeerToPeer.{AddPeer, BroadcastRequest, GetPeers, HandShake}
-import net.nightwhistler.nwcsc.actor.{BlockChainCommunication, PeerToPeer}
+import net.nightwhistler.nwcsc.actor.BlockChainActor
+import net.nightwhistler.nwcsc.actor.BlockChainActor.{NewBlock, NewBlockChain, QueryAll, QueryLatest}
+import net.nightwhistler.nwcsc.actor.PeerToPeer.{BlockChainUpdated, BroadcastRequest}
 import net.nightwhistler.nwcsc.blockchain._
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, GivenWhenThen, Matchers}
 
-/**
-  * Created by alex on 15-6-17.
-  */
-
-class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
+class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   with ImplicitSender with GivenWhenThen with BeforeAndAfterAll with Matchers {
 
   override def afterAll {
@@ -22,20 +18,20 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
   trait WithTestActor {
     val blockChain = BlockChain(NoDifficulty).addMessage("My test data")
     val peerToPeer = TestProbe()
-    val blockChainCommunicationActor: ActorRef = system.actorOf(BlockChainCommunication.props(blockChain, peerToPeer.ref))
+    val blockChainActor: ActorRef = system.actorOf(BlockChainActor.props(blockChain, peerToPeer.ref))
   }
 
-  "A BlockChainCommunication actor" should "send the blockchain to anybody that requests it" in new WithTestActor {
-    blockChainCommunicationActor ! QueryAll
-    expectMsg(ResponseBlocks(blockChain.blocks))
+  "A BlockChainActor actor" should "send the blockchain to anybody that requests it" in new WithTestActor {
+    blockChainActor ! QueryAll
+    expectMsg(NewBlockChain(blockChain.blocks))
   }
 
   it should "send the latest block, and nothing more for a QueryLatest request" in new WithTestActor {
     When("we query for a single block")
-    blockChainCommunicationActor ! QueryLatest
+    blockChainActor ! QueryLatest
 
     Then("we only expect the latest block")
-    expectMsg(ResponseBlock(blockChain.latestBlock))
+    expectMsg(NewBlock(blockChain.latestBlock))
   }
 
   it should "attach a block to the current chain when it receives a new BlockChain which has exactly 1 new block" in new WithTestActor {
@@ -45,12 +41,12 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
     val oldBlocks = blockChain.blocks
 
     When("we receive a message with the longer chain")
-    blockChainCommunicationActor ! ResponseBlock(nextBlock)
-    blockChainCommunicationActor ! QueryAll
+    blockChainActor ! NewBlock(nextBlock)
+    blockChainActor ! QueryAll
 
     Then("the new block should be added to the chain, and a broadcast should be sent")
     expectMsgPF() {
-      case ResponseBlocks(blocks) => blocks shouldEqual( nextBlock +: oldBlocks )
+      case NewBlockChain(blocks) => blocks shouldEqual( nextBlock +: oldBlocks )
     }
   }
 
@@ -62,10 +58,11 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
     }
 
     When("we receive this longer chain")
-    blockChainCommunicationActor ! ResponseBlocks(longerChain.blocks)
+    blockChainActor ! NewBlockChain(longerChain.blocks)
 
-    Then("The chain should be replaced, and a broadcast should be sent")
-    peerToPeer.expectMsg(BroadcastRequest(ResponseBlocks(longerChain.blocks)))
+    Then("The chain should be replaced, and the peer to peer actor should be notified")
+    peerToPeer.expectMsg(BroadcastRequest(NewBlock(longerChain.latestBlock)))
+    peerToPeer.expectMsg(BlockChainUpdated(longerChain))
 
   }
 
@@ -75,14 +72,14 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
     val oldBlockChain = blockChain
     val newBlockChain = oldBlockChain .addMessage("Some new data") .addMessage("And more")
 
-    blockChainCommunicationActor ! ResponseBlocks(newBlockChain.blocks)
+    blockChainActor ! NewBlockChain(newBlockChain.blocks)
 
     When("we receive the old blockchain")
-    blockChainCommunicationActor ! ResponseBlocks(oldBlockChain.blocks)
+    blockChainActor ! NewBlockChain(oldBlockChain.blocks)
 
     Then("We expect the message to be discarded")
-    blockChainCommunicationActor ! QueryAll
-    expectMsg(ResponseBlocks(newBlockChain.blocks))
+    blockChainActor ! QueryAll
+    expectMsg(NewBlockChain(newBlockChain.blocks))
   }
 
   it should "query for the full chain when we receive a single block that is further ahead in the chain" in new WithTestActor {
@@ -92,15 +89,15 @@ class BlockChainCommunicationTest extends TestKit(ActorSystem("BlockChain")) wit
       .addMessage("Some new data") .addMessage("And more")
 
     When("we receive the head of this blockchain")
-    blockChainCommunicationActor ! ResponseBlock(newBlockChain.latestBlock)
+    blockChainActor ! NewBlock(newBlockChain.latestBlock)
 
     Then("expect a query for the full blockchain")
     peerToPeer.expectMsg(BroadcastRequest(QueryAll))
-    peerToPeer.reply(ResponseBlocks(newBlockChain.blocks))
+    peerToPeer.reply(NewBlockChain(newBlockChain.blocks))
 
     Then("we expect the blockchain to be changed")
-    blockChainCommunicationActor ! QueryAll
-    expectMsg(ResponseBlocks(newBlockChain.blocks))
+    blockChainActor ! QueryAll
+    expectMsg(NewBlockChain(newBlockChain.blocks))
 
   }
 

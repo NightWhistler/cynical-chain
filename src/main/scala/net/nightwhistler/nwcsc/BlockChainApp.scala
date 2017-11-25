@@ -5,7 +5,7 @@ import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
-import net.nightwhistler.nwcsc.actor.{BlockChainCommunication, PeerToPeer}
+import net.nightwhistler.nwcsc.actor.{BlockChainActor, PeerToPeer}
 import net.nightwhistler.nwcsc.actor.PeerToPeer.AddPeer
 import net.nightwhistler.nwcsc.blockchain.BlockChain
 import net.nightwhistler.nwcsc.rest.RestInterface
@@ -18,7 +18,6 @@ object BlockChainApp extends App with RestInterface {
   implicit val executionContext = system.dispatcher
 
   val peerToPeerActor = system.actorOf(PeerToPeer.props)
-  val blockChainActor = system.actorOf(BlockChainCommunication.props(BlockChain(), peerToPeerActor))
 
   val config = ConfigFactory.load()
   val logger = Logger("WebServer")
@@ -27,7 +26,7 @@ object BlockChainApp extends App with RestInterface {
 
   if ( ! seedHost.isEmpty ) {
     logger.info(s"Attempting to connect to seed-host ${seedHost}")
-    blockChainActor ! AddPeer(seedHost)
+    peerToPeerActor ! AddPeer(seedHost)
   } else {
     logger.info("No seed host configured, waiting for messages.")
   }

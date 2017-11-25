@@ -7,13 +7,13 @@ import akka.util.Timeout
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.actor.PeerToPeer._
 import akka.pattern.pipe
+import net.nightwhistler.nwcsc.actor.BlockChainActor._
+import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineResult}
+import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
-/**
-  * Created by alex on 17-6-17.
-  */
 object PeerToPeer {
 
   case class AddPeer( address: String )
@@ -28,6 +28,8 @@ object PeerToPeer {
 
   case class BroadcastRequest(message: Any)
 
+  case class BlockChainUpdated( blockChain: BlockChain )
+
   def props(implicit ec: ExecutionContext) = Props(new PeerToPeer)
 }
 
@@ -36,12 +38,28 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
   implicit val timeout = Timeout(Duration(5, TimeUnit.SECONDS))
   implicit val executionContext = context.system.dispatcher
 
+  val blockChainActor = context.actorOf(BlockChainActor.props(self))
+  val miningActor = context.actorOf(Mining.props(self))
+
   val logger: Logger = Logger(classOf[PeerToPeer])
   var peers: Set[ActorRef] = Set.empty
 
   def broadcast( message: Any ) = peers.foreach( _ ! message )
 
   override def receive = {
+
+    case blockchainMessage @ (GetBlockChain | QueryAll | QueryLatest) => blockChainActor forward blockchainMessage
+
+    case BlockChainUpdated(blockChain) => miningActor ! BlockChainChanged(blockChain)
+
+    case add: AddMessages => miningActor ! add
+
+    case MineResult(block) =>
+      logger.debug(s"Received a valid block from the miner for index ${block.index}, adding it to the chain.")
+      //We don't remove the messages yet, not until they have been confirmed to be in the blockchain.
+      //The main blockchain may still reject the block!
+      blockChainActor ! NewBlock(block)
+
 
     case BroadcastRequest(message) => broadcast(message)
 
@@ -74,6 +92,7 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
       peers += sender()
 
     case GetPeers => sender() ! Peers(peers.toSeq.map(_.path.toSerializationFormat))
+
 
     case Terminated(actorRef) =>
       logger.debug(s"Peer ${actorRef} has terminated. Removing it from the list.")
