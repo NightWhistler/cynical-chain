@@ -60,7 +60,6 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
       //The main blockchain may still reject the block!
       blockChainActor ! NewBlock(block)
 
-
     case BroadcastRequest(message) => broadcast(message)
 
     case AddPeer(peerAddress) =>
@@ -83,6 +82,8 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
 
         //Add to the current list of peers
         peers += newPeerRef
+
+        logger.debug(s"Peer list grew to size ${peers.size}")
       } else logger.debug("We already know this peer, discarding")
 
     case Peers(peers) => peers.foreach( self ! AddPeer(_))
@@ -92,7 +93,6 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
       peers += sender()
 
     case GetPeers => sender() ! Peers(peers.toSeq.map(_.path.toSerializationFormat))
-
 
     case Terminated(actorRef) =>
       logger.debug(s"Peer ${actorRef} has terminated. Removing it from the list.")

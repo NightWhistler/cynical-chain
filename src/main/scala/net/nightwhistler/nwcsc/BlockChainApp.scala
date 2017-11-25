@@ -17,7 +17,7 @@ object BlockChainApp extends App with RestInterface {
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
 
-  val peerToPeerActor = system.actorOf(PeerToPeer.props)
+  val peerToPeerActor = system.actorOf(PeerToPeer.props, "peerToPeerActor")
 
   val config = ConfigFactory.load()
   val logger = Logger("WebServer")

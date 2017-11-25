@@ -12,7 +12,7 @@ services:
         links: 
             - node1:node1
         environment:
-            - JAVA_OPTS=-Dblockchain.seedHost=akka.tcp://BlockChain@node1:2552/user/blockChainActor
+            - JAVA_OPTS=-Dblockchain.seedHost=akka.tcp://BlockChain@node1:2552/user/peerToPeerActor
         ports:
             - "9001:9000"
     node3:
@@ -20,7 +20,7 @@ services:
         links: 
             - node1:node1
         environment:
-            - JAVA_OPTS=-Dblockchain.seedHost=akka.tcp://BlockChain@node1:2552/user/blockChainActor
+            - JAVA_OPTS=-Dblockchain.seedHost=akka.tcp://BlockChain@node1:2552/user/peerToPeerActor
         ports:
             - "9002:9000"
     node4:
@@ -28,7 +28,7 @@ services:
         links: 
             - node1:node1
         environment:
-            - JAVA_OPTS=-Dblockchain.seedHost=akka.tcp://BlockChain@node1:2552/user/blockChainActor
+            - JAVA_OPTS=-Dblockchain.seedHost=akka.tcp://BlockChain@node1:2552/user/peerToPeerActor
         ports:
             - "9003:9000"
 
