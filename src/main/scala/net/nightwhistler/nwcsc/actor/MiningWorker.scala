@@ -22,7 +22,7 @@ Send a message per none, and use become() when we get a request to stop.
  */
 class MiningWorker(reportBackTo: ActorRef) extends Actor {
 
-  val logger = Logger("MiningActor")
+  val logger = Logger(classOf[MiningWorker])
 
   var keepMining = true
 

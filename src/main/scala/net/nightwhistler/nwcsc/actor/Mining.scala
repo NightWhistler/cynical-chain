@@ -35,7 +35,7 @@ class Mining( peerToPeer: ActorRef )(implicit ec: ExecutionContext) extends Acto
   var miners: Set[ActorRef] = Set.empty
   var messages: Set[BlockMessage] = Set.empty
 
-  def createWorker( factory: ActorRefFactory ): ActorRef = factory.actorOf(MiningWorker.props(self))
+  def createWorker( factory: ActorRefFactory ): ActorRef = factory.actorOf(MiningWorker.props(peerToPeer))
 
   val logger = Logger(classOf[Mining])
 
