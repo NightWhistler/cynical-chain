@@ -52,8 +52,10 @@ function loadBlocks(nodeNum) {
 
         for ( var i=0; i < blocks.length; i++ ) {
             var block = blocks[i];
+            var blockHash = block.hash.substring(0,7);
+            var prevHash = block.previousHash.substring(0,7);
 
-            dot += blockName(i) + "[label=\"index: " + block.index + "| foundBy: " + block.foundBy + "| " + messages(block) + "\",fillcolor=" + colourMapping[block.foundBy] +"];\n"
+            dot += blockName(i) + "[label=\" { index: " + block.index + "| foundBy: " + block.foundBy + "} | { hash: " + blockHash + " |  prev-hash: " + prevHash + "} | " + messages(block) + "\";fillcolor=" + colourMapping[block.foundBy] +"];\n"
 
             if ( i < blocks.length -1 ) {
                 dot += blockName(i) + " -> " + blockName(i+1) + ";\n";
@@ -67,7 +69,6 @@ function loadBlocks(nodeNum) {
         var scoreNodeName = "score_" + nodeName;
 
         document.getElementById(scoreNodeName).innerHTML = score(blocks, nodeName);
-
 
         var container = document.getElementById(nodeName);
         var latestHash = blocks[blocks.length -1].hash;
