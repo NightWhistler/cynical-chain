@@ -11,7 +11,7 @@ import scala.util.{Failure, Success, Try}
 
 case class BlockMessage( data: String, id: String = UUID.randomUUID().toString)
 
-object GenesisBlock extends Block(0, BigInt(0), 1497359352, "Genesis", Seq(BlockMessage("74dd70aa-2ddb-4aa2-8f95-ffc3b5cebad1","Genesis block")), 0,
+object GenesisBlock extends Block(0, BigInt(0), 1497359352, "Genesis", Seq(BlockMessage("Genesis block", "74dd70aa-2ddb-4aa2-8f95-ffc3b5cebad1")), 0,
   BigInt("2b33684ac1ce0a93a54410de84d4114a3882362bcec35a2a9b588630811ae92b", 16))
 
 case class Block(index: Long, previousHash: BigInt, timestamp: Long, foundBy: String, messages: Seq[BlockMessage], nonse: Long, hash: BigInt)

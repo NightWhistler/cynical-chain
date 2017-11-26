@@ -3,6 +3,7 @@ package net.nightwhistler.nwcsc.rest
 import java.util.concurrent.TimeUnit
 
 import akka.actor.ActorRef
+import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.unmarshalling.PredefinedFromEntityUnmarshallers
 import akka.pattern.ask
@@ -43,21 +44,23 @@ trait RestInterface extends Json4sSupport {
 
   val routes =
     get {
-      path("blocks") {
-        val chain: Future[Seq[Block]] = (peerToPeerActor ? GetBlockChain).map {
-          //This is a bit of a hack, since JSON4S doesn't serialize case objects well
-          case CurrentBlockChain(blockChain) => blockChain.blocks.slice(0, blockChain.blocks.length -1) :+ GenesisBlock.copy()
-        }
-        complete(chain)
-      }~
-      path("peers") {
-        complete( (peerToPeerActor ? GetPeers).mapTo[Peers] )
-      }~
-      path("latestBlock") {
-        complete( (peerToPeerActor ? QueryLatest).map {
-          case NewBlock(GenesisBlock) => GenesisBlock.copy()
-          case NewBlock(block) => block
-        })
+      respondWithHeaders(RawHeader("Access-Control-Allow-Origin", "*")) {
+        path("blocks") {
+          val chain: Future[Seq[Block]] = (peerToPeerActor ? GetBlockChain).map {
+            //This is a bit of a hack, since JSON4S doesn't serialize case objects well
+            case CurrentBlockChain(blockChain) => blockChain.blocks.slice(0, blockChain.blocks.length - 1) :+ GenesisBlock.copy()
+          }
+          complete(chain)
+        } ~
+          path("peers") {
+            complete((peerToPeerActor ? GetPeers).mapTo[Peers])
+          } ~
+          path("latestBlock") {
+            complete((peerToPeerActor ? QueryLatest).map {
+              case NewBlock(GenesisBlock) => GenesisBlock.copy()
+              case NewBlock(block) => block
+            })
+          }
       }
     }~
     post {
