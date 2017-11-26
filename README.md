@@ -36,6 +36,15 @@ All nodes should show the block:
     curl http://localhost:9002/blocks
     curl http://localhost:9003/blocks
 
+Visualisation:
+
+Open 
+
+    ui/index.html
+
+in your browser to visualse the blockchains. It will connect to localhost:9000 - localhost:9003 and show the chains, 
+with the blocks coloured based on who found it.
+
 Testing and code coverage
 -------------------------
 
