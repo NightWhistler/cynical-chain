@@ -48,17 +48,17 @@ function loadBlocks(nodeNum) {
         console.log( "Got " + blocks.length + " blocks for node " + nodeNum);
 
         var dot = "digraph { ";
-        dot += "rankdir=\"LR\";node[style=filled;shape=record];\n";
+        dot += "rankdir=\"RL\";node[style=filled;shape=record];\n";
 
         for ( var i=0; i < blocks.length; i++ ) {
             var block = blocks[i];
             var blockHash = block.hash.substring(0,7);
             var prevHash = block.previousHash.substring(0,7);
 
-            dot += blockName(i) + "[label=\" { index: " + block.index + "| foundBy: " + block.foundBy + "} | { hash: " + blockHash + " |  prev-hash: " + prevHash + "} | " + messages(block) + "\";fillcolor=" + colourMapping[block.foundBy] +"];\n"
+            dot += blockName(i) + "[label=\" { index: " + block.index + "| foundBy: " + block.foundBy + "} | { prev-hash: " + prevHash + " |  hash: " + blockHash + "} | " + messages(block) + "\";fillcolor=" + colourMapping[block.foundBy] +"];\n"
 
             if ( i < blocks.length -1 ) {
-                dot += blockName(i) + " -> " + blockName(i+1) + ";\n";
+                dot += blockName(i+1) + " -> " + blockName(i) + ";\n";
             }
         }
 
