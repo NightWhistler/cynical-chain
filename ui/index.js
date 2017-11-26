@@ -58,9 +58,9 @@ function loadBlocks(nodeNum) {
 
         dot += "}";
 
-        var image = Viz(dot, { format: "svg" });
+        var image = Viz(dot, { format:  "png-image-element"});
         var nodeName = "node" + (nodeNum+1);
-        document.getElementById(nodeName).innerHTML = image;
+        document.getElementById(nodeName).appendChild(image);
 
         // var dotNodeName = nodeName + "_dot";
         // document.getElementById(dotNodeName).innerHTML = "<pre>" + dot + "</pre>";
