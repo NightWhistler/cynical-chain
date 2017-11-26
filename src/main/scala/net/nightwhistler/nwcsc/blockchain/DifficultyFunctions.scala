@@ -14,7 +14,7 @@ import net.nightwhistler.nwcsc.blockchain.BlockChain.DifficultyFunction
   */
 object NaiveCoinDifficulty extends DifficultyFunction {
   val BASE_DIFFICULTY: BigInt = BigInt("f" * 64, 16)
-  val EVERY_X_BLOCKS = 2
+  val EVERY_X_BLOCKS = 3
   val POW_CURVE = 5
 
   override def apply(block: Block): BigInt = {

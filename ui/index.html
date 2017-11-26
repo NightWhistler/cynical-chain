@@ -3,6 +3,12 @@
 <head>
 <script src="node_modules/viz.js/viz.js"></script>
 <script src="index.js"></script>
+<script>
+    function doLoad() {
+        loadBlockChains();
+        setTimeout( doLoad, 2000 );
+    }
+</script>
 <style>
 img {
     max-width:100%;
@@ -10,7 +16,7 @@ img {
 }
 </style>
 </head>
-<body onload="loadBlockChains()">
+<body onload="doLoad()">
 Node1 (<span id="score_node1"></span>)
 <div id="node1"></div>
 <div id="node1_dot"></div>

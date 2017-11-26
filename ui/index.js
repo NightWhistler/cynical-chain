@@ -67,7 +67,17 @@ function loadBlocks(nodeNum) {
         var scoreNodeName = "score_" + nodeName;
 
         document.getElementById(scoreNodeName).innerHTML = score(blocks, nodeName);
-        document.getElementById(nodeName).appendChild(image);
+
+
+        var container = document.getElementById(nodeName);
+        var latestHash = blocks[blocks.length -1].hash;
+
+        if ( container.children.length == 0 ) {
+            container.appendChild(image);
+        } else if ( container.getAttribute('latestHash') != latestHash ) {
+            container.replaceChild(image, container.children[0]);
+        }
+        container.setAttribute('latestHash', latestHash);
 
         // var dotNodeName = nodeName + "_dot";
         // document.getElementById(dotNodeName).innerHTML = "<pre>" + dot + "</pre>";
