@@ -1,6 +1,7 @@
 package net.nightwhistler.nwcsc.actor
 
 import akka.actor.{Actor, ActorRef, Props}
+import akka.event.LoggingReceive
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.actor.PeerToPeer.{BlockChainUpdated, BroadcastRequest}
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain, BlockMessage}
@@ -31,9 +32,9 @@ class BlockChainActor( var blockChain: BlockChain, peerToPeer: ActorRef) extends
 
   import BlockChainActor._
 
-  val logger = Logger("PeerToPeerCommunication")
+  val logger = Logger(classOf[BlockChainActor])
 
-  override def receive = {
+  override def receive = LoggingReceive {
     case QueryLatest => sender() ! NewBlock(blockChain.latestBlock)
     case QueryAll => sender() ! NewBlockChain(blockChain.blocks)
 

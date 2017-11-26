@@ -3,6 +3,7 @@ package net.nightwhistler.nwcsc.actor
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorRef, Props, Terminated}
+import akka.event.LoggingReceive
 import akka.util.Timeout
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.actor.PeerToPeer._
@@ -50,9 +51,9 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
 
   def broadcast( message: Any ) = peers.foreach( _ ! message )
 
-  override def receive = {
+  override def receive = LoggingReceive {
 
-    case blockchainMessage @ (GetBlockChain | QueryAll | QueryLatest) => blockChainActor forward blockchainMessage
+    case blockchainMessage @ (GetBlockChain | QueryAll | QueryLatest | NewBlock(_) | NewBlockChain(_) ) => blockChainActor forward blockchainMessage
 
     case BlockChainUpdated(blockChain) => miningActor ! BlockChainChanged(blockChain)
 
@@ -88,6 +89,9 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
 
         //Add to the current list of peers
         peers += newPeerRef
+
+        //And ask it for it's view on the world
+        newPeerRef ! QueryLatest
 
         logger.debug(s"Peer list grew to size ${peers.size}")
       } else logger.debug("We already know this peer, discarding")

@@ -20,6 +20,10 @@ function loadJSON(url, callback) {
     xobj.send(null);  
 }
 
+function score(blocks, nodeName) {
+    return blocks.filter( function(b) { return b.foundBy == nodeName; } ).length;
+}
+
 function blockName(index) {
     return index == 0 ? "Genesis" : "Block" + index;
 }
@@ -60,6 +64,9 @@ function loadBlocks(nodeNum) {
 
         var image = Viz(dot, { format:  "png-image-element"});
         var nodeName = "node" + (nodeNum+1);
+        var scoreNodeName = "score_" + nodeName;
+
+        document.getElementById(scoreNodeName).innerHTML = score(blocks, nodeName);
         document.getElementById(nodeName).appendChild(image);
 
         // var dotNodeName = nodeName + "_dot";

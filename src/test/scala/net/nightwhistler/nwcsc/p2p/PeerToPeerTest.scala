@@ -2,6 +2,7 @@ package net.nightwhistler.nwcsc.p2p
 
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
+import net.nightwhistler.nwcsc.actor.BlockChainActor.QueryLatest
 import net.nightwhistler.nwcsc.actor.Mining.BlockChainChanged
 import net.nightwhistler.nwcsc.actor.PeerToPeer
 import net.nightwhistler.nwcsc.actor.PeerToPeer._
@@ -67,6 +68,8 @@ class PeerToPeerTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLik
     When("we register 2 new peers")
     val probes = Seq(TestProbe(), TestProbe()).map(_.ref.path.toSerializationFormat)
     peerToPeerActor ! Peers(probes)
+
+    peerProbe.expectMsg(QueryLatest)
 
     Then("the original peer should receive a notification for each one")
     peerProbe.expectMsg(AddPeer(probes(0)))

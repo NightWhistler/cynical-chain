@@ -3,6 +3,7 @@ package net.nightwhistler.nwcsc.actor
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props, Terminated}
+import akka.event.LoggingReceive
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.actor.BlockChainActor._
 import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock, MineResult}
@@ -39,7 +40,7 @@ class Mining( peerToPeer: ActorRef )(implicit ec: ExecutionContext) extends Acto
 
   val logger = Logger(classOf[Mining])
 
-  override def receive = {
+  override def receive = LoggingReceive {
 
     case BlockChainChanged(newBlockChain) =>
       logger.debug("The blockchain has changed, stopping all miners.")

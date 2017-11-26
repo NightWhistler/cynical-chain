@@ -1,6 +1,7 @@
 package net.nightwhistler.nwcsc.actor
 
 import akka.actor.{Actor, ActorRef, Props}
+import akka.event.LoggingReceive
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.BlockChainConfig
 import net.nightwhistler.nwcsc.actor.Mining.MineResult
@@ -28,7 +29,7 @@ class MiningWorker(reportBackTo: ActorRef) extends Actor {
 
   var keepMining = true
 
-  override def receive: Receive = {
+  override def receive: Receive = LoggingReceive {
 
     case StopMining => keepMining = false
 
