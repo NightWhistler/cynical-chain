@@ -2,17 +2,15 @@ package net.nightwhistler.nwcsc.actor
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{Actor, ActorRef, ActorRefFactory, Props, Terminated}
+import akka.actor.{Actor, ActorRef, ActorRefFactory, PoisonPill, Props, Terminated}
 import akka.event.LoggingReceive
+import akka.pattern.{ask, pipe}
+import akka.util.Timeout
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.actor.BlockChainActor._
-import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock, MineResult}
-import net.nightwhistler.nwcsc.actor.MiningWorker.StopMining
+import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock}
 import net.nightwhistler.nwcsc.actor.PeerToPeer.BroadcastRequest
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain, BlockMessage}
-import akka.pattern.pipe
-import akka.pattern.ask
-import akka.util.Timeout
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
@@ -44,7 +42,7 @@ class Mining( peerToPeer: ActorRef )(implicit ec: ExecutionContext) extends Acto
 
     case BlockChainChanged(newBlockChain) =>
       logger.debug("The blockchain has changed, stopping all miners.")
-      miners.foreach( _ ! StopMining )
+      miners.foreach( _ ! PoisonPill )
 
       messages = messages.filterNot( newBlockChain.contains(_))
 
