@@ -3,10 +3,6 @@ package net.nightwhistler.nwcsc.blockchain
 import net.nightwhistler.nwcsc.blockchain.BlockChain.DifficultyFunction
 
 /**
-  * Created by alex on 22-6-17.
-  */
-
-/**
   * This is the difficulty function used by naivecoin,
   * which raises the difficulty based on the block-index.
   *
@@ -14,7 +10,7 @@ import net.nightwhistler.nwcsc.blockchain.BlockChain.DifficultyFunction
   */
 object NaiveCoinDifficulty extends DifficultyFunction {
   val BASE_DIFFICULTY: BigInt = BigInt("f" * 64, 16)
-  val EVERY_X_BLOCKS = 3
+  val EVERY_X_BLOCKS = 5
   val POW_CURVE = 5
 
   override def apply(block: Block): BigInt = {
