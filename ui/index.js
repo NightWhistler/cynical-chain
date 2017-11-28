@@ -6,7 +6,7 @@ var colourMapping = {
     "node4": "khaki"
 }
 
-function loadJSON(url, callback) {   
+function loadJSON(url, callback, failureCallback) {   
 
     var xobj = new XMLHttpRequest();
     xobj.overrideMimeType("application/json");
@@ -15,6 +15,8 @@ function loadJSON(url, callback) {
     xobj.onreadystatechange = function () {
           if (xobj.readyState == 4 && xobj.status == "200") {
             callback(xobj.responseText);
+          } else if ( xobj.status != "200" ) {
+            failureCallback(xobj.status);
           }
     };
     xobj.send(null);  
@@ -43,6 +45,11 @@ function loadBlocks(nodeNum) {
     var port = 9000 + nodeNum;
     var url = "http://localhost:" + port + "/blocks";
 
+    var nodeName = "node" + (nodeNum+1);
+    var scoreNodeName = "score_" + nodeName;
+    var container = document.getElementById(nodeName);
+    var scoreNode = document.getElementById(scoreNodeName);
+
     loadJSON(url, function(response) {
         var blocks = JSON.parse(response).reverse();
         console.log( "Got " + blocks.length + " blocks for node " + nodeNum);
@@ -55,7 +62,7 @@ function loadBlocks(nodeNum) {
             var blockHash = block.hash.substring(0,7);
             var prevHash = block.previousHash.substring(0,7);
 
-            dot += blockName(i) + "[label=\" { index: " + block.index + "| foundBy: " + block.foundBy + "} | { prev-hash: " + prevHash + " |  hash: " + blockHash + "} | " + messages(block) + "\";fillcolor=" + colourMapping[block.foundBy] +"];\n"
+            dot += blockName(i) + "[label=\" { index: " + block.index + "| foundBy: " + block.foundBy + " | nonse: " + block.nonse + "} | { prev-hash: " + prevHash + " |  hash: " + blockHash + "} | timestamp: " + block.timestamp + "| " + messages(block) + "\";fillcolor=" + colourMapping[block.foundBy] +"];\n"
 
             if ( i < blocks.length -1 ) {
                 dot += blockName(i+1) + " -> " + blockName(i) + ";\n";
@@ -65,12 +72,6 @@ function loadBlocks(nodeNum) {
         dot += "}";
 
         var image = Viz(dot, { format:  "png-image-element"});
-        var nodeName = "node" + (nodeNum+1);
-        var scoreNodeName = "score_" + nodeName;
-
-        document.getElementById(scoreNodeName).innerHTML = score(blocks, nodeName);
-
-        var container = document.getElementById(nodeName);
         var latestHash = blocks[blocks.length -1].hash;
 
         if ( container.children.length == 0 ) {
@@ -79,9 +80,16 @@ function loadBlocks(nodeNum) {
             container.replaceChild(image, container.children[0]);
         }
         container.setAttribute('latestHash', latestHash);
+        scoreNode.innerHTML = "Node " + (nodeNum +1) + " (" + score(blocks, nodeName) + ")";
 
         // var dotNodeName = nodeName + "_dot";
         // document.getElementById(dotNodeName).innerHTML = "<pre>" + dot + "</pre>";
+    }, function(status) {
+        if ( container.children.length > 0 ) {
+            container.removeChild(container.children[0]);
+            container.setAttribute('latestHash', '');
+            scoreNode.innerHTML = '';
+        }
     });
 }
 
