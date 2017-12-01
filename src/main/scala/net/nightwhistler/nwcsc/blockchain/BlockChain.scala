@@ -89,8 +89,6 @@ case class BlockChain private(val blocks: Seq[Block], difficultyFunction: Diffic
     newBlock.hash < difficultyFunction(newBlock) &&
     ! newBlock.messages.exists( messages.contains(_))
 
-
-
   def attemptBlock(messages: Seq[BlockMessage], nonse: Long, nodeName: String ): Option[Block] = {
     val previousBlock = latestBlock
     val nextIndex = previousBlock.index + 1

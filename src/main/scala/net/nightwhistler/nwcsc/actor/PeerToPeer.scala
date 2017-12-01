@@ -53,7 +53,8 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
 
   override def receive = LoggingReceive {
 
-    case blockchainMessage @ (GetBlockChain | QueryAll | QueryLatest | NewBlock(_) | NewBlockChain(_) ) => blockChainActor forward blockchainMessage
+    case blockchainMessage @ (GetBlockChain | QueryAll | QueryLatest | NewBlock(_) | NewBlockChain(_) ) =>
+      blockChainActor forward blockchainMessage
 
     case BlockChainUpdated(blockChain) => miningActor ! BlockChainChanged(blockChain)
 
