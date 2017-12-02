@@ -15,7 +15,8 @@ object GenesisBlock extends Block(0, BigInt(0), 1497359352, "Genesis",
   Seq(BlockMessage("Genesis block", "74dd70aa-2ddb-4aa2-8f95-ffc3b5cebad1")), 0,
   BigInt("8bf633d2c8025c2fedea4ecdf68378584d6c0e545736fa95a0f2fa094182912a", 16))
 
-case class Block(index: Long, previousHash: BigInt, timestamp: Long, foundBy: String, messages: Seq[BlockMessage], nonse: Long, hash: BigInt)
+case class Block(index: Long, previousHash: BigInt, timestamp: Long, foundBy: String,
+                 messages: Seq[BlockMessage], nonse: Long, hash: BigInt)
 
 object BlockChain {
 
@@ -31,8 +32,6 @@ object BlockChain {
 }
 
 case class BlockChain private(val blocks: Seq[Block], difficultyFunction: DifficultyFunction, hashFunction: HashFunction) {
-
-  val TWO_HOURS = 2 * 60 * 60
 
   val logger = Logger("BlockChain")
 
@@ -83,7 +82,6 @@ case class BlockChain private(val blocks: Seq[Block], difficultyFunction: Diffic
   private def validBlock(newBlock: Block, previousBlock: Block, messages: Set[BlockMessage]) =
     previousBlock.index + 1 == newBlock.index &&
     previousBlock.hash == newBlock.previousHash &&
-    (newBlock.timestamp - (new Date().getTime / 1000)) < TWO_HOURS &&
     previousBlock.timestamp <= newBlock.timestamp &&
     hashFunction(newBlock) == newBlock.hash &&
     newBlock.hash < difficultyFunction(newBlock) &&
