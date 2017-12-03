@@ -1,6 +1,6 @@
 package net.nightwhistler.nwcsc.actor
 
-import akka.actor.{ActorSystem, Terminated}
+import akka.actor.{ActorSystem, Terminated, PoisonPill}
 import akka.testkit.{ImplicitSender, TestKit}
 import net.nightwhistler.nwcsc.actor.Mining.MineResult
 import net.nightwhistler.nwcsc.blockchain._
@@ -33,7 +33,7 @@ class MiningWorkerTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecL
     miningWorker ! MiningWorker.MineBlock(blockChain, Seq(message))
 
     watch(miningWorker)
-    miningWorker ! MiningWorker.StopMining
+    miningWorker ! PoisonPill
 
     expectMsgPF() {
       case Terminated(ref) => ref shouldBe miningWorker

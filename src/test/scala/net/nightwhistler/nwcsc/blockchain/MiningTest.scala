@@ -4,7 +4,6 @@ import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, PoisonPill, Props}
 import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
 import net.nightwhistler.nwcsc.actor.BlockChainActor.{AddMessages, CurrentBlockChain, GetBlockChain, NewBlock}
 import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock, MineResult}
-import net.nightwhistler.nwcsc.actor.MiningWorker.StopMining
 import net.nightwhistler.nwcsc.actor.PeerToPeer.BroadcastRequest
 import net.nightwhistler.nwcsc.actor._
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, GivenWhenThen, Matchers}
@@ -95,6 +94,7 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   it should "stop all workers when the blockchain changes" in new WithMiningActor {
     val testMessage = BlockMessage("bla")
     miningActor ! MineBlock(blockChain, Seq(testMessage))
+    watch(workerProbe.ref)
 
     workerProbe.expectMsgPF() {
       case MiningWorker.MineBlock(_, Seq(testMessage), 0, _) => assert(testMessage.data == "bla")
@@ -102,7 +102,7 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
 
     miningActor ! BlockChainChanged(BlockChain().addMessage("bla").addMessage("die").addMessage("bla"))
 
-    workerProbe.expectMsg(StopMining)
+    expectTerminated(workerProbe.ref)
   }
 
 }
