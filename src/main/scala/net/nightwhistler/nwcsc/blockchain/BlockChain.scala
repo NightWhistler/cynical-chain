@@ -5,8 +5,9 @@ import java.util.{Date, UUID}
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.blockchain.BlockChain.{DifficultyFunction, HashFunction}
 
-import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
+
+import scala.collection.immutable.Seq
 
 case class BlockMessage( data: String, id: String = UUID.randomUUID().toString)
 
@@ -26,17 +27,17 @@ object BlockChain {
   val defaultHashFunction = SimpleSHA256Hash
 
   def apply( difficultyFunction: DifficultyFunction = defaultDifficultyFunction, hashFunction: HashFunction = defaultHashFunction )
-    = new BlockChain(Seq(GenesisBlock), difficultyFunction, hashFunction)
+    = new BlockChain(None, GenesisBlock, difficultyFunction, hashFunction)
 
 }
 
-case class BlockChain private(val blocks: Seq[Block], difficultyFunction: DifficultyFunction, hashFunction: HashFunction) {
+case class BlockChain private(prevChain: Option[BlockChain], latestBlock: Block, difficultyFunction: DifficultyFunction, hashFunction: HashFunction) {
 
   val logger = Logger("BlockChain")
 
-  lazy val messages: Set[BlockMessage] = blocks.foldLeft(Set[BlockMessage]()) {
-    case (set, block) => set ++ block.messages
-  }
+  lazy val messages: Seq[BlockMessage] = latestBlock.messages ++ prevChain.map(_.messages).getOrElse(Nil)
+
+  def blocks: Seq[Block] = latestBlock +: prevChain.map( _.blocks ).getOrElse( Nil )
 
   def addMessage(data: String, foundBy: String = "", nonse: Long = 0 ): Try[BlockChain]
     = addMessages(Seq(BlockMessage(data)), foundBy, nonse)
@@ -61,11 +62,10 @@ case class BlockChain private(val blocks: Seq[Block], difficultyFunction: Diffic
   }
 
   def addBlock( block: Block ): Try[ BlockChain ] =
-    if ( validBlock(block) ) Success( new BlockChain(block +: blocks, difficultyFunction, hashFunction ))
+    if ( validBlock(block) ) Success( new BlockChain(Some(this), block, difficultyFunction, hashFunction ))
     else Failure( new IllegalArgumentException("Invalid block added"))
 
   def firstBlock: Block = blocks.last
-  def latestBlock: Block = blocks.head
 
   def generateNextBlock(blockMessages: Seq[BlockMessage], foundBy: String, nonse: Long): Block = {
     val previousBlock = latestBlock
