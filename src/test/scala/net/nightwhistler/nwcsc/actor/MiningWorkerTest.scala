@@ -5,6 +5,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import net.nightwhistler.nwcsc.actor.Mining.MineResult
 import net.nightwhistler.nwcsc.blockchain._
 import org.scalatest._
+import scala.collection.immutable.Seq
 
 class MiningWorkerTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   with ImplicitSender with GivenWhenThen with BeforeAndAfterAll with Matchers {

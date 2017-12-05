@@ -16,6 +16,8 @@ import net.nightwhistler.nwcsc.blockchain.{Block, BlockMessage, GenesisBlock}
 import org.json4s.JsonAST.JString
 import org.json4s.{CustomSerializer, DefaultFormats, Serializer, native}
 
+import scala.collection.immutable.Seq
+
 import scala.concurrent.{ExecutionContext, Future}
 
 class BigIntHexSerializer extends CustomSerializer[BigInt](format => ( {

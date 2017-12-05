@@ -1,13 +1,14 @@
 package net.nightwhistler.nwcsc.blockchain
 
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, PoisonPill, Props}
-import akka.testkit.{ImplicitSender, TestActor, TestKit, TestProbe}
-import net.nightwhistler.nwcsc.actor.BlockChainActor.{AddMessages, CurrentBlockChain, GetBlockChain, NewBlock}
-import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock, MineResult}
+import akka.testkit.{ImplicitSender, TestKit, TestProbe}
+import net.nightwhistler.nwcsc.actor.BlockChainActor.{AddMessages, CurrentBlockChain, GetBlockChain}
+import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock}
 import net.nightwhistler.nwcsc.actor.PeerToPeer.BroadcastRequest
 import net.nightwhistler.nwcsc.actor._
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, GivenWhenThen, Matchers}
 
+import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 

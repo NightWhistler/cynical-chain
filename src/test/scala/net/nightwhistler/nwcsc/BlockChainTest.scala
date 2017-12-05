@@ -1,15 +1,12 @@
 package net.nightwhistler.nwcsc
 
-import net.nightwhistler.nwcsc.blockchain.BlockChain.DifficultyFunction
 import net.nightwhistler.nwcsc.blockchain._
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.FlatSpec
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 
+import scala.collection.immutable.Seq
 
-/**
-  * Created by alex on 13-6-17.
-  */
 class BlockChainTest extends FlatSpec with GeneratorDrivenPropertyChecks {
 
   implicit val arbitraryChain: Arbitrary[BlockChain] = Arbitrary {

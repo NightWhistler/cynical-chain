@@ -12,6 +12,8 @@ import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock}
 import net.nightwhistler.nwcsc.actor.PeerToPeer.BroadcastRequest
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain, BlockMessage}
 
+import scala.collection.immutable.{Seq, Set}
+
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
@@ -47,7 +49,7 @@ class Mining( peerToPeer: ActorRef )(implicit ec: ExecutionContext) extends Acto
       messages = messages.filterNot( newBlockChain.contains(_))
 
       if ( ! messages.isEmpty ) {
-        self ! MineBlock(newBlockChain, messages.toSeq)
+        self ! MineBlock(newBlockChain, messages.to[Seq])
       }
 
     case MineBlock(blockChain, requestMessages) =>
@@ -60,14 +62,14 @@ class Mining( peerToPeer: ActorRef )(implicit ec: ExecutionContext) extends Acto
         messages ++= filtered
 
         //Tell all peers to start mining
-        peerToPeer! BroadcastRequest(AddMessages(messages.toSeq))
+        peerToPeer! BroadcastRequest(AddMessages(messages.to[Seq]))
 
         //Spin up a new actor to do the mining
         val miningActor = createWorker(context)
         context.watch(miningActor)
         miners += miningActor
 
-        miningActor ! MiningWorker.MineBlock(blockChain, messages.toSeq)
+        miningActor ! MiningWorker.MineBlock(blockChain, messages.to[Seq])
       } else logger.debug("Request contained no new messages, so not doing anything.")
 
 
@@ -76,10 +78,10 @@ class Mining( peerToPeer: ActorRef )(implicit ec: ExecutionContext) extends Acto
       logger.debug(s"Still running ${miners.size} miners for ${messages.size} messages")
 
       if ( miners.size == 0  && ! messages.isEmpty ) {
-        val savedMessaged = messages.toSeq
+        val savedMessages = messages.to[Seq]
         messages = Set.empty
         ( peerToPeer ? GetBlockChain ).mapTo[CurrentBlockChain]
-          .map(r => MineBlock(r.blockChain, savedMessaged) ) pipeTo self
+          .map(r => MineBlock(r.blockChain, savedMessages) ) pipeTo self
       }
   }
 

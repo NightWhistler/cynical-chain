@@ -8,6 +8,8 @@ import net.nightwhistler.nwcsc.actor.Mining.MineResult
 import net.nightwhistler.nwcsc.actor.MiningWorker.MineBlock
 import net.nightwhistler.nwcsc.blockchain.{BlockChain, BlockMessage}
 
+import scala.collection.immutable.Seq
+
 import scala.util.{Failure, Success}
 
 object MiningWorker {

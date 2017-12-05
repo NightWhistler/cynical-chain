@@ -8,7 +8,8 @@ import net.nightwhistler.nwcsc.actor.PeerToPeer.{BlockChainUpdated, BroadcastReq
 import net.nightwhistler.nwcsc.blockchain._
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, GivenWhenThen, Matchers}
 
-import scala.util.{Success, Try}
+import scala.collection.immutable.Seq
+import scala.util.Try
 
 class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   with ImplicitSender with GivenWhenThen with BeforeAndAfterAll with Matchers {

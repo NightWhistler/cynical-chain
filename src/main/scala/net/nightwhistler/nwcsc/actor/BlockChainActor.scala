@@ -6,6 +6,8 @@ import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.actor.PeerToPeer.{BlockChainUpdated, BroadcastRequest}
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain, BlockMessage}
 
+import scala.collection.immutable.Seq
+
 import scala.util.{Failure, Success}
 
 object BlockChainActor {
