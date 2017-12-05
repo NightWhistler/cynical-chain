@@ -18,7 +18,7 @@ class BlockChainTest extends FlatSpec with GeneratorDrivenPropertyChecks {
       text <- Gen.listOfN(length, Gen.alphaNumStr)
     } yield {
       val chain = BlockChain(NoDifficulty, SimpleSHA256Hash)
-      text.foreach { data => chain.addBlock(chain.generateNextBlock(Seq(BlockMessage(data)))) }
+      text.foreach { data => chain.addMessage(data) }
       chain
     }
   }
@@ -33,8 +33,8 @@ class BlockChainTest extends FlatSpec with GeneratorDrivenPropertyChecks {
 
   "Adding an invalid block" should "never work" in forAll { (chain: BlockChain, firstName: String, secondName: String) =>
 
-    val firstNewBlock = chain.generateNextBlock(Seq(BlockMessage(firstName)))
-    val secondNewBlock = chain.generateNextBlock(Seq(BlockMessage(secondName)))
+    val firstNewBlock = chain.generateNextBlock(Seq(BlockMessage(firstName)), "", 0)
+    val secondNewBlock = chain.generateNextBlock(Seq(BlockMessage(secondName)), "", 0)
 
     val currentBlockLength = chain.blocks.length
 

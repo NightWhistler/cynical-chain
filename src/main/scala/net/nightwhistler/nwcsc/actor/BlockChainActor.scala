@@ -77,7 +77,7 @@ class BlockChainActor( var blockChain: BlockChain, peerToPeer: ActorRef) extends
 
       case _ =>
         logger.info("Received blockchain is longer than the current blockchain")
-        blockChain.replaceBlocks(receivedBlocks) match {
+        blockChain.withBlocks(receivedBlocks) match {
           case Success(newChain) =>
             blockChain = newChain
             //We never broadcast a whole chain, just the latest block.

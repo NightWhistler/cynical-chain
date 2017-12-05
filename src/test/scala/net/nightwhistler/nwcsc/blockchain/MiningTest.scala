@@ -9,6 +9,7 @@ import net.nightwhistler.nwcsc.actor._
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, GivenWhenThen, Matchers}
 
 import scala.concurrent.ExecutionContext
+import scala.util.Try
 
 
 class TestMiningActor(dummyWorker: () => ActorRef, peerToPeer: ActorRef)(implicit ec: ExecutionContext) extends Mining( peerToPeer ) {
@@ -100,7 +101,10 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
       case MiningWorker.MineBlock(_, Seq(testMessage), 0, _) => assert(testMessage.data == "bla")
     }
 
-    miningActor ! BlockChainChanged(BlockChain().addMessage("bla").addMessage("die").addMessage("bla"))
+    val newChain = Try(BlockChain(NoDifficulty)).flatMap(_.addMessage("bla"))
+      .flatMap(_.addMessage("die")).flatMap(_.addMessage("Bla")).get
+
+    miningActor ! BlockChainChanged(newChain)
 
     expectTerminated(workerProbe.ref)
   }

@@ -8,6 +8,8 @@ import net.nightwhistler.nwcsc.actor.PeerToPeer.{BlockChainUpdated, BroadcastReq
 import net.nightwhistler.nwcsc.blockchain._
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, GivenWhenThen, Matchers}
 
+import scala.util.{Success, Try}
+
 class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   with ImplicitSender with GivenWhenThen with BeforeAndAfterAll with Matchers {
 
@@ -16,7 +18,7 @@ class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSp
   }
 
   trait WithTestActor {
-    val blockChain = BlockChain(NoDifficulty).addMessage("My test data")
+    val blockChain = BlockChain(NoDifficulty).addMessage("My test data").get
     val peerToPeer = TestProbe()
     val blockChainActor: ActorRef = system.actorOf(BlockChainActor.props(blockChain, peerToPeer.ref))
   }
@@ -37,7 +39,7 @@ class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSp
   it should "attach a block to the current chain when it receives a new BlockChain which has exactly 1 new block" in new WithTestActor {
 
     Given("and a new chain containing an extra block")
-    val nextBlock = blockChain.generateNextBlock(Seq(BlockMessage("Some more data")))
+    val nextBlock = blockChain.generateNextBlock(Seq(BlockMessage("Some more data")), "", 0)
     val oldBlocks = blockChain.blocks
 
     When("we receive a message with the longer chain")
@@ -53,9 +55,9 @@ class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSp
   it should "replace the chain if more than 1 new block is received" in new WithTestActor {
     Given("A blockchain with 3 new blocks")
     val blockData = Seq("aap", "noot", "mies")
-    val longerChain = blockData.foldLeft(blockChain) { case (chain, data) =>
-      chain.addMessage(data)
-    }
+    val longerChain = blockData.foldLeft(Try(blockChain)) { case (chain, data) =>
+      chain.flatMap(_.addMessage(data))
+    }.get
 
     When("we receive this longer chain")
     blockChainActor ! NewBlockChain(longerChain.blocks)
@@ -70,7 +72,9 @@ class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSp
   it should "do nothing if the received chain is valid but shorter than the current one" in new WithTestActor  {
     Given("the old blockchain and a current blockchain which is longer")
     val oldBlockChain = blockChain
-    val newBlockChain = oldBlockChain .addMessage("Some new data") .addMessage("And more")
+    val newBlockChain = Seq("Some new data", "And more").foldLeft(Try(oldBlockChain)) {
+      case (chain, msg) => chain.flatMap(_.addMessage(msg))
+    }.get
 
     blockChainActor ! NewBlockChain(newBlockChain.blocks)
 
@@ -85,8 +89,10 @@ class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSp
   it should "query for the full chain when we receive a single block that is further ahead in the chain" in new WithTestActor {
     Given("a later version of the blockchain which is 2 blocks ahead")
     val oldBlockChain = blockChain
-    val newBlockChain = blockChain
-      .addMessage("Some new data") .addMessage("And more")
+    val newBlockChain = Seq("Some new data", "And more").foldLeft(Try(oldBlockChain)) {
+      case (chain, msg) => chain.flatMap(_.addMessage(msg))
+    }.get
+
 
     When("we receive the head of this blockchain")
     blockChainActor ! NewBlock(newBlockChain.latestBlock)

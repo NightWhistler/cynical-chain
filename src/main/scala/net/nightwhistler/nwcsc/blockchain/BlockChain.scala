@@ -35,15 +35,17 @@ case class BlockChain private(val blocks: Seq[Block], difficultyFunction: Diffic
 
   val logger = Logger("BlockChain")
 
-  def addMessage(data: String ): BlockChain = addBlock(Seq(BlockMessage(data)))
+  def addMessage(data: String, foundBy: String = "", nonse: Long = 0 ): Try[BlockChain]
+    = addMessages(Seq(BlockMessage(data)), foundBy, nonse)
 
-  def addBlock(messages: Seq[BlockMessage]) = new BlockChain(generateNextBlock(messages) +: blocks, difficultyFunction, hashFunction)
+  def addMessages(messages: Seq[BlockMessage], foundBy: String, nonse: Long): Try[BlockChain] =
+    addBlock( generateNextBlock(messages, foundBy, nonse) )
 
   def contains( blockMessage: BlockMessage ) = blocks.find( b => b.messages.contains(blockMessage) ).isDefined
 
   def containsAll( messages: Seq[BlockMessage] ) = messages.forall( contains(_) )
 
-  def replaceBlocks( newBlocks: Seq[Block] ): Try[BlockChain] = {
+  def withBlocks(newBlocks: Seq[Block] ): Try[BlockChain] = {
     newBlocks match {
       case GenesisBlock :: tail => BlockChain(difficultyFunction, hashFunction).appendBlocks(tail)
       case blocks :+ GenesisBlock => BlockChain(difficultyFunction, hashFunction).appendBlocks(blocks.reverse)
@@ -64,19 +66,13 @@ case class BlockChain private(val blocks: Seq[Block], difficultyFunction: Diffic
   def firstBlock: Block = blocks.last
   def latestBlock: Block = blocks.head
 
-  def generateNextBlock(messages: Seq[BlockMessage], nodeName: String = ""): Block = {
-    val timeBefore = new Date().getTime
-    val block = generateNextBlock(messages, 0, nodeName)
-    logger.debug(s"Found block in ${new Date().getTime - timeBefore} ms after ${block.nonse +1} tries.")
-    block
-  }
+  def generateNextBlock( messages: Seq[BlockMessage], foundBy: String, nonse: Long): Block = {
+    val previousBlock = latestBlock
+    val nextIndex = previousBlock.index + 1
+    val nextTimestamp = new Date().getTime() / 1000
 
-  @tailrec
-  private def generateNextBlock( messages: Seq[BlockMessage], nonse: Long, nodeName: String ): Block = {
-    attemptBlock(messages, nonse, nodeName) match {
-      case Some(block) => block
-      case None => generateNextBlock(messages, nonse +1, nodeName)
-    }
+    val tempBlock = Block(nextIndex, previousBlock.hash, nextTimestamp, foundBy, messages, nonse, 0)
+    tempBlock.copy( hash = hashFunction(tempBlock) )
   }
 
   private def validBlock(newBlock: Block, previousBlock: Block, messages: Set[BlockMessage]) =
@@ -86,17 +82,6 @@ case class BlockChain private(val blocks: Seq[Block], difficultyFunction: Diffic
     hashFunction(newBlock) == newBlock.hash &&
     newBlock.hash < difficultyFunction(newBlock) &&
     ! newBlock.messages.exists( messages.contains(_))
-
-  def attemptBlock(messages: Seq[BlockMessage], nonse: Long, nodeName: String ): Option[Block] = {
-    val previousBlock = latestBlock
-    val nextIndex = previousBlock.index + 1
-    val nextTimestamp = new Date().getTime() / 1000
-
-    val tempBlock = Block(nextIndex, previousBlock.hash, nextTimestamp, nodeName, messages, nonse, 0)
-    val block = tempBlock.copy( hash = hashFunction(tempBlock) )
-
-    Some(block).filter(validBlock)
-  }
 
   def validBlock(newBlock: Block): Boolean = validChain( newBlock +: blocks )
 
