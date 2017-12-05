@@ -5,7 +5,6 @@ import java.util.{Date, UUID}
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.blockchain.BlockChain.{DifficultyFunction, HashFunction}
 
-import scala.annotation.tailrec
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
@@ -35,15 +34,17 @@ case class BlockChain private(val blocks: Seq[Block], difficultyFunction: Diffic
 
   val logger = Logger("BlockChain")
 
+  lazy val messages: Set[BlockMessage] = blocks.foldLeft(Set[BlockMessage]()) {
+    case (set, block) => set ++ block.messages
+  }
+
   def addMessage(data: String, foundBy: String = "", nonse: Long = 0 ): Try[BlockChain]
     = addMessages(Seq(BlockMessage(data)), foundBy, nonse)
 
-  def addMessages(messages: Seq[BlockMessage], foundBy: String, nonse: Long): Try[BlockChain] =
-    addBlock( generateNextBlock(messages, foundBy, nonse) )
+  def addMessages(blockMessages: Seq[BlockMessage], foundBy: String, nonse: Long): Try[BlockChain] =
+    addBlock( generateNextBlock(blockMessages, foundBy, nonse) )
 
-  def contains( blockMessage: BlockMessage ) = blocks.find( b => b.messages.contains(blockMessage) ).isDefined
-
-  def containsAll( messages: Seq[BlockMessage] ) = messages.forall( contains(_) )
+  def contains( blockMessage: BlockMessage ) = messages.contains( blockMessage )
 
   def withBlocks(newBlocks: Seq[Block] ): Try[BlockChain] = {
     newBlocks match {
@@ -66,33 +67,24 @@ case class BlockChain private(val blocks: Seq[Block], difficultyFunction: Diffic
   def firstBlock: Block = blocks.last
   def latestBlock: Block = blocks.head
 
-  def generateNextBlock( messages: Seq[BlockMessage], foundBy: String, nonse: Long): Block = {
+  def generateNextBlock(blockMessages: Seq[BlockMessage], foundBy: String, nonse: Long): Block = {
     val previousBlock = latestBlock
     val nextIndex = previousBlock.index + 1
     val nextTimestamp = new Date().getTime() / 1000
 
-    val tempBlock = Block(nextIndex, previousBlock.hash, nextTimestamp, foundBy, messages, nonse, 0)
+    val tempBlock = Block(nextIndex, previousBlock.hash, nextTimestamp, foundBy, blockMessages, nonse, 0)
     tempBlock.copy( hash = hashFunction(tempBlock) )
   }
 
-  private def validBlock(newBlock: Block, previousBlock: Block, messages: Set[BlockMessage]) =
+  def validBlock(newBlock: Block): Boolean = validBlock(newBlock, latestBlock)
+
+  private def validBlock(newBlock: Block, previousBlock: Block) =
     previousBlock.index + 1 == newBlock.index &&
     previousBlock.hash == newBlock.previousHash &&
     previousBlock.timestamp <= newBlock.timestamp &&
     hashFunction(newBlock) == newBlock.hash &&
     newBlock.hash < difficultyFunction(newBlock) &&
     ! newBlock.messages.exists( messages.contains(_))
-
-  def validBlock(newBlock: Block): Boolean = validChain( newBlock +: blocks )
-
-  def validChain( chain: Seq[Block] ): Boolean = validChain(chain, Set.empty)
-
-  @tailrec
-  private def validChain( chain: Seq[Block], messages: Set[BlockMessage]): Boolean = chain match {
-    case singleBlock :: Nil if singleBlock == GenesisBlock => true
-    case head :: beforeHead :: tail if validBlock(head, beforeHead, messages) => validChain(beforeHead :: tail, messages ++ head.messages)
-    case _ => false
-  }
 
 }
 

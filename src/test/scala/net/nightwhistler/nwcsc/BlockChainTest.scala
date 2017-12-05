@@ -23,9 +23,6 @@ class BlockChainTest extends FlatSpec with GeneratorDrivenPropertyChecks {
     }
   }
 
-  "Generated chains" should "always be correct" in forAll { chain: BlockChain =>
-    assert( chain.validChain( chain.blocks ) )
-  }
 
   "For any given chain, the first block" must "be the Genesis block" in forAll { chain: BlockChain =>
     assertResult(GenesisBlock)(chain.firstBlock)
