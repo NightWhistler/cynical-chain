@@ -77,11 +77,13 @@ case class BlockChain private(head: Block, tail: Option[BlockChain], difficultyF
   def generateNextBlock(blockMessages: Seq[BlockMessage], foundBy: String, nonse: Long): Block = {
     val previousBlock = head
     val nextIndex = previousBlock.index + 1
-    val nextTimestamp = new Date().getTime() / 1000
+    val nextTimestamp = currentTime
 
     val tempBlock = Block(nextIndex, previousBlock.hash, nextTimestamp, foundBy, blockMessages, nonse, 0)
     tempBlock.copy( hash = hashFunction(tempBlock) )
   }
+
+  private def currentTime = System.currentTimeMillis() / 1000
 
   def withBlocks(newBlocks: Seq[Block] ): Try[BlockChain] = newBlocks match {
     case GenesisBlock :: tail => BlockChain(difficultyFunction, hashFunction).appendBlocks(tail)
@@ -99,10 +101,13 @@ case class BlockChain private(head: Block, tail: Option[BlockChain], difficultyF
 
   def validBlock(newBlock: Block): Boolean = validBlock(newBlock, head)
 
+  private val fiveMinutes = 300
+
   private def validBlock(newBlock: Block, previousBlock: Block) =
     previousBlock.index + 1 == newBlock.index &&
     previousBlock.hash == newBlock.previousHash &&
     previousBlock.timestamp <= newBlock.timestamp &&
+    (newBlock.timestamp - currentTime) < fiveMinutes &&
     hashFunction(newBlock) == newBlock.hash &&
     newBlock.hash < difficultyFunction(newBlock) &&
     ! newBlock.messages.exists( contains(_) )
