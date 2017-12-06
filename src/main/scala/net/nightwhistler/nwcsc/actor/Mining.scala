@@ -54,7 +54,7 @@ class Mining( peerToPeer: ActorRef )(implicit ec: ExecutionContext) extends Acto
 
     case MineBlock(blockChain, requestMessages) =>
 
-      logger.debug(s"Got mining request for ${requestMessages.size} messages with current blockchain index at ${blockChain.latestBlock.index}")
+      logger.debug(s"Got mining request for ${requestMessages.size} messages with current blockchain index at ${blockChain.head.index}")
       val filtered = requestMessages.filterNot( blockChain.contains(_))
 
       //We only need to start mining if any new messages are in the message.

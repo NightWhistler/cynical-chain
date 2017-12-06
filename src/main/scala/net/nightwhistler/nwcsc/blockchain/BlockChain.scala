@@ -5,8 +5,8 @@ import java.util.{Date, UUID}
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.blockchain.BlockChain.{DifficultyFunction, HashFunction}
 
+import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
-
 import scala.collection.immutable.Seq
 
 case class BlockMessage( data: String, id: String = UUID.randomUUID().toString)
@@ -27,17 +27,46 @@ object BlockChain {
   val defaultHashFunction = SimpleSHA256Hash
 
   def apply( difficultyFunction: DifficultyFunction = defaultDifficultyFunction, hashFunction: HashFunction = defaultHashFunction )
-    = new BlockChain(None, GenesisBlock, difficultyFunction, hashFunction)
+    = new BlockChain(GenesisBlock, None, difficultyFunction, hashFunction)
 
 }
 
-case class BlockChain private(prevChain: Option[BlockChain], latestBlock: Block, difficultyFunction: DifficultyFunction, hashFunction: HashFunction) {
+case class BlockChain private(head: Block, tail: Option[BlockChain], difficultyFunction: DifficultyFunction,
+                              hashFunction: HashFunction) {
 
   val logger = Logger("BlockChain")
 
-  lazy val messages: Seq[BlockMessage] = latestBlock.messages ++ prevChain.map(_.messages).getOrElse(Nil)
+  /** Conceptually:
+  def blocks: List[Block] = latestBlock :: prevChain.map( _.blocks ).getOrElse( Nil )
+  **/
+  def blocks: List[Block] = blocks(Nil)
 
-  def blocks: Seq[Block] = latestBlock +: prevChain.map( _.blocks ).getOrElse( Nil )
+  @tailrec
+  private def blocks( prefix: List[Block] ): List[Block] = {
+    val newPrefix = prefix :+ head
+    tail match {
+      case None => newPrefix
+      case Some(chain) => chain.blocks(newPrefix)
+    }
+  }
+
+  def firstBlock = first
+
+  @tailrec
+  private def first: Block = tail match {
+    case None => head
+    case Some(chain) => chain.first
+  }
+
+  def contains(blockMessage: BlockMessage) = hasMessage(blockMessage)
+
+  @tailrec
+  private def hasMessage( blockMessage: BlockMessage ): Boolean = {
+    head.messages.contains(blockMessage) || (tail match {
+      case None => false
+      case Some(chain) => chain.hasMessage(blockMessage)
+    })
+  }
 
   def addMessage(data: String, foundBy: String = "", nonse: Long = 0 ): Try[BlockChain]
     = addMessages(Seq(BlockMessage(data)), foundBy, nonse)
@@ -45,30 +74,8 @@ case class BlockChain private(prevChain: Option[BlockChain], latestBlock: Block,
   def addMessages(blockMessages: Seq[BlockMessage], foundBy: String, nonse: Long): Try[BlockChain] =
     addBlock( generateNextBlock(blockMessages, foundBy, nonse) )
 
-  def contains( blockMessage: BlockMessage ) = messages.contains( blockMessage )
-
-  def withBlocks(newBlocks: Seq[Block] ): Try[BlockChain] = {
-    newBlocks match {
-      case GenesisBlock :: tail => BlockChain(difficultyFunction, hashFunction).appendBlocks(tail)
-      case blocks :+ GenesisBlock => BlockChain(difficultyFunction, hashFunction).appendBlocks(blocks.reverse)
-      case _ => Failure(new IllegalArgumentException("New chain does not start or end with the GenesisBlock"))
-    }
-  }
-
-  def appendBlocks( newBlocks: Seq[Block] ): Try[BlockChain] = {
-    newBlocks.foldLeft(Try(this)) { (blockChain, block) =>
-      blockChain.flatMap( chain => chain.addBlock(block))
-    }
-  }
-
-  def addBlock( block: Block ): Try[ BlockChain ] =
-    if ( validBlock(block) ) Success( new BlockChain(Some(this), block, difficultyFunction, hashFunction ))
-    else Failure( new IllegalArgumentException("Invalid block added"))
-
-  def firstBlock: Block = blocks.last
-
   def generateNextBlock(blockMessages: Seq[BlockMessage], foundBy: String, nonse: Long): Block = {
-    val previousBlock = latestBlock
+    val previousBlock = head
     val nextIndex = previousBlock.index + 1
     val nextTimestamp = new Date().getTime() / 1000
 
@@ -76,7 +83,21 @@ case class BlockChain private(prevChain: Option[BlockChain], latestBlock: Block,
     tempBlock.copy( hash = hashFunction(tempBlock) )
   }
 
-  def validBlock(newBlock: Block): Boolean = validBlock(newBlock, latestBlock)
+  def withBlocks(newBlocks: Seq[Block] ): Try[BlockChain] = newBlocks match {
+    case GenesisBlock :: tail => BlockChain(difficultyFunction, hashFunction).appendBlocks(tail)
+    case blocks :+ GenesisBlock => BlockChain(difficultyFunction, hashFunction).appendBlocks(blocks.reverse)
+    case _ => Failure(new IllegalArgumentException("New chain does not start or end with the GenesisBlock"))
+  }
+
+  def appendBlocks( newBlocks: Seq[Block] ): Try[BlockChain] = newBlocks.foldLeft(Try(this)) {
+    (blockChain, block) => blockChain.flatMap(chain => chain.addBlock(block))
+  }
+
+  def addBlock( block: Block ): Try[ BlockChain ] =
+    if (validBlock(block) ) Success( new BlockChain(block, Some(this), difficultyFunction, hashFunction ))
+    else Failure(new IllegalArgumentException("Invalid block added"))
+
+  def validBlock(newBlock: Block): Boolean = validBlock(newBlock, head)
 
   private def validBlock(newBlock: Block, previousBlock: Block) =
     previousBlock.index + 1 == newBlock.index &&
@@ -84,8 +105,31 @@ case class BlockChain private(prevChain: Option[BlockChain], latestBlock: Block,
     previousBlock.timestamp <= newBlock.timestamp &&
     hashFunction(newBlock) == newBlock.hash &&
     newBlock.hash < difficultyFunction(newBlock) &&
-    ! newBlock.messages.exists( messages.contains(_))
+    ! newBlock.messages.exists( contains(_) )
 
+  def valid: Boolean = validChain
+
+  @tailrec
+  private def validChain: Boolean = tail match {
+    case None => head == GenesisBlock
+    case Some(chain) => validBlock(head, chain.head) && chain.validChain
+  }
+
+  override def toString: String = {
+    val stringBuilder = new StringBuilder("BlockChain(")
+    buildToString(stringBuilder)
+    stringBuilder.append(")")
+    stringBuilder.toString
+  }
+
+  @tailrec
+  private def buildToString(builder: StringBuilder): Unit = {
+    builder.append(s", $head")
+    tail match {
+      case None => //End
+      case Some(chain) => chain.buildToString(builder)
+    }
+  }
 }
 
 

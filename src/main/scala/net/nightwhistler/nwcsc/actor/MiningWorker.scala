@@ -28,16 +28,18 @@ class MiningWorker(reportBackTo: ActorRef) extends Actor {
 
     case MineBlock(blockChain, messages, nonse, timeStamp) =>
       if ( nonse == 0 ) {
-        logger.debug(s"Starting mining attempt for ${messages.size} messages with index ${blockChain.latestBlock.index +1}")
+        logger.debug(s"Starting mining attempt for ${messages.size} messages with index ${blockChain.head.index +1}")
       }
 
-      blockChain.addMessages(messages, nodeName, nonse).map(_.latestBlock) match {
-        case Success(block) =>
-          logger.debug(s"Found a block with index ${block.index} after ${new java.util.Date().getTime - timeStamp} ms and ${block.nonse +1} attempts.")
-          reportBackTo ! MineResult(block)
-          context.stop(self)
+      val newBlock = blockChain.generateNextBlock(messages, nodeName, nonse)
+      val hash = blockChain.hashFunction(newBlock)
 
-        case Failure(_) => self ! MineBlock(blockChain, messages, nonse + 1, timeStamp)
+      if ( hash < blockChain.difficultyFunction(newBlock)) {
+        logger.debug(s"Found a block with index ${newBlock.index} after ${new java.util.Date().getTime - timeStamp} ms and ${newBlock.nonse +1} attempts.")
+        reportBackTo ! MineResult(newBlock)
+        context.stop(self)
+      } else {
+        self ! MineBlock(blockChain, messages, nonse + 1, timeStamp)
       }
   }
 

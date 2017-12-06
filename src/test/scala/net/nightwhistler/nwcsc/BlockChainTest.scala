@@ -20,6 +20,9 @@ class BlockChainTest extends FlatSpec with GeneratorDrivenPropertyChecks {
     }
   }
 
+  "Any generated blockchain that is succesful " must "also be valid" in forAll { chain: BlockChain =>
+    assertResult(true)(chain.valid)
+  }
 
   "For any given chain, the first block" must "be the Genesis block" in forAll { chain: BlockChain =>
     assertResult(GenesisBlock)(chain.firstBlock)
@@ -38,6 +41,6 @@ class BlockChainTest extends FlatSpec with GeneratorDrivenPropertyChecks {
     newChain.addBlock(secondNewBlock)
 
     assertResult(newChain.blocks.length)(currentBlockLength +1)
-    assertResult(newChain.latestBlock)(firstNewBlock)
+    assertResult(newChain.head)(firstNewBlock)
   }
 }

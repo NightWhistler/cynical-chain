@@ -37,7 +37,7 @@ class BlockChainActor( var blockChain: BlockChain, peerToPeer: ActorRef) extends
   val logger = Logger(classOf[BlockChainActor])
 
   override def receive = LoggingReceive {
-    case QueryLatest => sender() ! NewBlock(blockChain.latestBlock)
+    case QueryLatest => sender() ! NewBlock(blockChain.head)
     case QueryAll => sender() ! NewBlockChain(blockChain.blocks)
 
     case GetBlockChain => sender() ! CurrentBlockChain(blockChain)
@@ -49,14 +49,14 @@ class BlockChainActor( var blockChain: BlockChain, peerToPeer: ActorRef) extends
 
   def handleNewBlock( block: Block ): Unit = {
 
-    val localLatestBlock = blockChain.latestBlock
+    val localLatestBlock = blockChain.head
 
     if (block.previousHash == localLatestBlock.hash) {
       logger.info("We can append the received block to our chain.")
       blockChain.addBlock(block) match {
         case Success(newChain) =>
           blockChain = newChain
-          peerToPeer ! BroadcastRequest(NewBlock(blockChain.latestBlock))
+          peerToPeer ! BroadcastRequest(NewBlock(blockChain.head))
           peerToPeer ! BlockChainUpdated(blockChain)
 
         case Failure(e) => logger.error("Refusing to add new block", e)
@@ -68,7 +68,7 @@ class BlockChainActor( var blockChain: BlockChain, peerToPeer: ActorRef) extends
   }
 
   def handleBlockChainResponse( receivedBlocks: Seq[Block] ): Unit = {
-    val localLatestBlock = blockChain.latestBlock
+    val localLatestBlock = blockChain.head
     logger.info(s"${receivedBlocks.length} blocks received.")
 
     receivedBlocks match {
@@ -83,7 +83,7 @@ class BlockChainActor( var blockChain: BlockChain, peerToPeer: ActorRef) extends
           case Success(newChain) =>
             blockChain = newChain
             //We never broadcast a whole chain, just the latest block.
-            peerToPeer ! BroadcastRequest(NewBlock(blockChain.latestBlock))
+            peerToPeer ! BroadcastRequest(NewBlock(blockChain.head))
             peerToPeer ! BlockChainUpdated(blockChain)
 
           case Failure(s) => logger.error("Rejecting received chain.", s)

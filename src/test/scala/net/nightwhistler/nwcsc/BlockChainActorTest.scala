@@ -34,7 +34,7 @@ class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSp
     blockChainActor ! QueryLatest
 
     Then("we only expect the latest block")
-    expectMsg(NewBlock(blockChain.latestBlock))
+    expectMsg(NewBlock(blockChain.head))
   }
 
   it should "attach a block to the current chain when it receives a new BlockChain which has exactly 1 new block" in new WithTestActor {
@@ -64,7 +64,7 @@ class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSp
     blockChainActor ! NewBlockChain(longerChain.blocks)
 
     Then("The chain should be replaced, and the peer to peer actor should be notified")
-    peerToPeer.expectMsg(BroadcastRequest(NewBlock(longerChain.latestBlock)))
+    peerToPeer.expectMsg(BroadcastRequest(NewBlock(longerChain.head)))
     peerToPeer.expectMsg(BlockChainUpdated(longerChain))
 
   }
@@ -96,7 +96,7 @@ class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSp
 
 
     When("we receive the head of this blockchain")
-    blockChainActor ! NewBlock(newBlockChain.latestBlock)
+    blockChainActor ! NewBlock(newBlockChain.head)
 
     Then("expect a query for the full blockchain")
     peerToPeer.expectMsg(BroadcastRequest(QueryAll))
