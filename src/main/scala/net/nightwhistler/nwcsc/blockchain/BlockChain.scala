@@ -39,33 +39,29 @@ case class BlockChain private(head: Block, tail: Option[BlockChain], difficultyF
   /** Conceptually:
   def blocks: List[Block] = latestBlock :: prevChain.map( _.blocks ).getOrElse( Nil )
   **/
-  def blocks: List[Block] = blocks(Nil)
+  def blocks: List[Block] = foldLeft[List[Block]](Nil) {
+    case (list, block) => list :+ block
+  }
+
+  def blocksReverse: List[Block] = foldLeft[List[Block]](Nil) {
+    case (list, block) => block :: list
+  }
+
+  def firstBlock: Block = foldLeft[Option[Block]](None) {
+    case (_, block) => Some(block)
+  }.get
+
+  def contains(blockMessage: BlockMessage) = foldLeft(false) {
+    case (b, block) => b || block.messages.contains(blockMessage)
+  }
 
   @tailrec
-  private def blocks( prefix: List[Block] ): List[Block] = {
-    val newPrefix = prefix :+ head
+  final def foldLeft[A]( startValue: A )( op: (A, Block) => A ): A = {
+    val currentResult = op(startValue, head)
     tail match {
-      case None => newPrefix
-      case Some(chain) => chain.blocks(newPrefix)
+      case None => currentResult
+      case Some(chain) => chain.foldLeft(currentResult)(op)
     }
-  }
-
-  def firstBlock = first
-
-  @tailrec
-  private def first: Block = tail match {
-    case None => head
-    case Some(chain) => chain.first
-  }
-
-  def contains(blockMessage: BlockMessage) = hasMessage(blockMessage)
-
-  @tailrec
-  private def hasMessage( blockMessage: BlockMessage ): Boolean = {
-    head.messages.contains(blockMessage) || (tail match {
-      case None => false
-      case Some(chain) => chain.hasMessage(blockMessage)
-    })
   }
 
   def addMessage(data: String, foundBy: String = "", nonse: Long = 0 ): Try[BlockChain]
