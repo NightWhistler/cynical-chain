@@ -49,6 +49,8 @@ case class BlockChain private(head: Block, tail: Option[BlockChain], difficultyF
     case (list, block) => block :: list
   }.reverse
 
+  def latestBlock = head
+
   def firstBlock: Block = foldLeft[Block](head) {
     case (_, block) => block
   }

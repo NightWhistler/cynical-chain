@@ -7,7 +7,6 @@ import net.nightwhistler.nwcsc.actor.PeerToPeer.{BlockChainUpdated, BroadcastReq
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain, BlockMessage}
 
 import scala.collection.immutable.Seq
-
 import scala.util.{Failure, Success}
 
 object BlockChainActor {
@@ -37,51 +36,55 @@ class BlockChainActor( var blockChain: BlockChain, peerToPeer: ActorRef) extends
   val logger = Logger(classOf[BlockChainActor])
 
   override def receive = LoggingReceive {
-    case QueryLatest => sender() ! NewBlock(blockChain.head)
+    case QueryLatest => sender() ! NewBlock(blockChain.latestBlock)
     case QueryAll => sender() ! NewBlockChain(blockChain.blocks)
+
     case GetBlockChain => sender() ! CurrentBlockChain(blockChain)
 
     case NewBlock(block) => handleNewBlock(block)
     case NewBlockChain(blocks) => handleBlockChainResponse(blocks)
+
   }
 
   def handleNewBlock( block: Block ): Unit = {
 
-    val localLatestBlock = blockChain.head
+    val localLatestBlock = blockChain.latestBlock
+    logger.info(s"New block with index ${block.index} received, our latest index is ${localLatestBlock.index}")
 
-    if (block.previousHash == localLatestBlock.hash) {
-      logger.info("We can append the received block to our chain.")
+    if ( block.index == localLatestBlock.index + 1) {
       blockChain.addBlock(block) match {
         case Success(newChain) =>
+          logger.info("We can append the received block to our chain.")
           blockChain = newChain
-          peerToPeer ! BroadcastRequest(NewBlock(blockChain.head))
+          peerToPeer ! BroadcastRequest(NewBlock(blockChain.latestBlock))
           peerToPeer ! BlockChainUpdated(blockChain)
 
         case Failure(e) => logger.error("Refusing to add new block", e)
       }
+    } else if ( block.index <= localLatestBlock.index ) {
+      logger.debug("Block was not newer than our current latest, ignoring.")
     } else {
-      logger.info("We have to query the chain from our peer")
+      logger.info("Block is more than 1 ahead, we have to query the chain from our peer")
       peerToPeer ! BroadcastRequest(QueryAll)
     }
   }
 
   def handleBlockChainResponse( receivedBlocks: Seq[Block] ): Unit = {
-    val localLatestBlock = blockChain.head
+    val localLatestBlock = blockChain.latestBlock
     logger.info(s"${receivedBlocks.length} blocks received.")
 
     receivedBlocks match {
       case Nil => logger.warn("Received an empty block list, discarding")
 
       case latestReceivedBlock :: _ if latestReceivedBlock.index <= localLatestBlock.index =>
-        logger.debug("received blockchain is not longer than received blockchain. Do nothing")
+        logger.debug("received blockchain is not longer than current blockchain. Do nothing")
 
       case _ =>
         logger.info("Received blockchain is longer than the current blockchain")
         blockChain.withBlocks(receivedBlocks) match {
           case Success(newChain) =>
             blockChain = newChain
-            //We never broadcast a whole chain, just the latest block.
-            peerToPeer ! BroadcastRequest(NewBlock(blockChain.head))
+            peerToPeer ! BroadcastRequest(NewBlock(blockChain.latestBlock))
             peerToPeer ! BlockChainUpdated(blockChain)
 
           case Failure(s) => logger.error("Rejecting received chain.", s)
