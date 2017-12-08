@@ -41,12 +41,12 @@ class BlockChainActor( var blockChain: BlockChain, peerToPeer: ActorRef) extends
 
     case GetBlockChain => sender() ! CurrentBlockChain(blockChain)
 
-    case NewBlock(block) => handleNewBlock(block)
+    case NewBlock(block) => handleNewBlock(block, sender())
     case NewBlockChain(blocks) => handleBlockChainResponse(blocks)
 
   }
 
-  def handleNewBlock( block: Block ): Unit = {
+  def handleNewBlock( block: Block, peer: ActorRef ): Unit = {
 
     val localLatestBlock = blockChain.latestBlock
     logger.info(s"New block with index ${block.index} received, our latest index is ${localLatestBlock.index}")
@@ -59,13 +59,13 @@ class BlockChainActor( var blockChain: BlockChain, peerToPeer: ActorRef) extends
           peerToPeer ! BroadcastRequest(NewBlock(blockChain.latestBlock))
           peerToPeer ! BlockChainUpdated(blockChain)
 
-        case Failure(e) => logger.error("Refusing to add new block", e)
+        case Failure(_) => logger.error("Refusing to add new block since it failed validation")
       }
     } else if ( block.index <= localLatestBlock.index ) {
       logger.debug("Block was not newer than our current latest, ignoring.")
     } else {
       logger.info("Block is more than 1 ahead, we have to query the chain from our peer")
-      peerToPeer ! BroadcastRequest(QueryAll)
+      peer ! QueryAll
     }
   }
 
