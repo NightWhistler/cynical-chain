@@ -99,8 +99,8 @@ class BlockChainActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSp
     blockChainActor ! NewBlock(newBlockChain.head)
 
     Then("expect a query for the full blockchain")
-    peerToPeer.expectMsg(BroadcastRequest(QueryAll))
-    peerToPeer.reply(NewBlockChain(newBlockChain.blocks))
+    expectMsg(QueryAll)
+    blockChainActor ! NewBlockChain(newBlockChain.blocks)
 
     Then("we expect the blockchain to be changed")
     blockChainActor ! QueryAll
