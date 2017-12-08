@@ -36,16 +36,9 @@ case class BlockChain private(head: Block, tail: Option[BlockChain], difficultyF
 
   val logger = Logger("BlockChain")
 
-  /** Conceptually:
-  def blocks: List[Block] = latestBlock :: prevChain.map( _.blocks ).getOrElse( Nil )
-  **/
   def blocks: List[Block] = foldLeft[List[Block]](Nil) {
-    case (list, block) => list :+ block
-  }
-
-  def blocksReverse: List[Block] = foldLeft[List[Block]](Nil) {
     case (list, block) => block :: list
-  }
+  }.reverse
 
   def firstBlock: Block = foldLeft[Option[Block]](None) {
     case (_, block) => Some(block)
@@ -116,21 +109,10 @@ case class BlockChain private(head: Block, tail: Option[BlockChain], difficultyF
     case Some(chain) => validBlock(head, chain.head) && chain.validChain
   }
 
-  override def toString: String = {
-    val stringBuilder = new StringBuilder("BlockChain(")
-    buildToString(stringBuilder)
-    stringBuilder.append(")")
-    stringBuilder.toString
-  }
+  override def toString: String = foldLeft(new StringBuilder("BlockChain(")) {
+    case (builder, block) => builder.append(s", $block")
+  }.append(")").toString
 
-  @tailrec
-  private def buildToString(builder: StringBuilder): Unit = {
-    builder.append(s", $head")
-    tail match {
-      case None => //End
-      case Some(chain) => chain.buildToString(builder)
-    }
-  }
 }
 
 

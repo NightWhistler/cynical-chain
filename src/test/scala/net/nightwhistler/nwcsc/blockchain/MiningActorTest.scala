@@ -3,7 +3,7 @@ package net.nightwhistler.nwcsc.blockchain
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, PoisonPill, Props}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import net.nightwhistler.nwcsc.actor.BlockChainActor.{AddMessages, CurrentBlockChain, GetBlockChain}
-import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock}
+import net.nightwhistler.nwcsc.actor.MiningActor.{BlockChainChanged, MineBlock}
 import net.nightwhistler.nwcsc.actor.PeerToPeer.BroadcastRequest
 import net.nightwhistler.nwcsc.actor._
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, GivenWhenThen, Matchers}
@@ -13,11 +13,11 @@ import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 
-class TestMiningActor(dummyWorker: () => ActorRef, peerToPeer: ActorRef)(implicit ec: ExecutionContext) extends Mining( peerToPeer ) {
+class TestMiningActorActor(dummyWorker: () => ActorRef, peerToPeer: ActorRef)(implicit ec: ExecutionContext) extends MiningActor( peerToPeer ) {
   override def createWorker(factory: ActorRefFactory): ActorRef = dummyWorker()
 }
 
-class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
+class MiningActorTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   with ImplicitSender with GivenWhenThen with BeforeAndAfterAll with Matchers {
 
   override def afterAll {
@@ -33,7 +33,7 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
     var blockChain = BlockChain(NoDifficulty)
     val peerToPeerProbe = TestProbe()
 
-    val miningActor = system.actorOf(Props(new TestMiningActor(probeProvider, peerToPeerProbe.ref)))
+    val miningActor = system.actorOf(Props(new TestMiningActorActor(probeProvider, peerToPeerProbe.ref)))
   }
 
   it should "send all outstanding messages to a new worker" in new WithMiningActor {
@@ -62,7 +62,7 @@ class MiningTest extends TestKit(ActorSystem("BlockChain")) with FlatSpecLike
   it should "keep spawning workers until there is no more work to do" in new WithMiningActor {
 
     Given("we have a worker running")
-    miningActor ! Mining.MineBlock(blockChain, Seq(BlockMessage("Bla")))
+    miningActor ! MiningActor.MineBlock(blockChain, Seq(BlockMessage("Bla")))
     peerToPeerProbe.expectMsgClass(classOf[BroadcastRequest])
 
     workerProbe.expectMsgPF() {

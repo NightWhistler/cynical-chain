@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorRef, Props}
 import akka.event.LoggingReceive
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.BlockChainConfig
-import net.nightwhistler.nwcsc.actor.Mining.MineResult
+import net.nightwhistler.nwcsc.actor.MiningActor.MineResult
 import net.nightwhistler.nwcsc.actor.MiningWorker.MineBlock
 import net.nightwhistler.nwcsc.blockchain.{BlockChain, BlockMessage}
 

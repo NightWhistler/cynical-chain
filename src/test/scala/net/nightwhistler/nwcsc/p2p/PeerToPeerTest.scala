@@ -3,7 +3,7 @@ package net.nightwhistler.nwcsc.p2p
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import net.nightwhistler.nwcsc.actor.BlockChainActor.QueryLatest
-import net.nightwhistler.nwcsc.actor.Mining.BlockChainChanged
+import net.nightwhistler.nwcsc.actor.MiningActor.BlockChainChanged
 import net.nightwhistler.nwcsc.actor.PeerToPeer
 import net.nightwhistler.nwcsc.actor.PeerToPeer._
 import net.nightwhistler.nwcsc.blockchain.{BlockChain, NoDifficulty}

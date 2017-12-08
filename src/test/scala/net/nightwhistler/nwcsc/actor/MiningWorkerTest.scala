@@ -2,7 +2,7 @@ package net.nightwhistler.nwcsc.actor
 
 import akka.actor.{ActorSystem, Terminated, PoisonPill}
 import akka.testkit.{ImplicitSender, TestKit}
-import net.nightwhistler.nwcsc.actor.Mining.MineResult
+import net.nightwhistler.nwcsc.actor.MiningActor.MineResult
 import net.nightwhistler.nwcsc.blockchain._
 import org.scalatest._
 import scala.collection.immutable.Seq

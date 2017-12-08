@@ -8,7 +8,7 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.actor.BlockChainActor._
-import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock}
+import net.nightwhistler.nwcsc.actor.MiningActor.{BlockChainChanged, MineBlock}
 import net.nightwhistler.nwcsc.actor.PeerToPeer.BroadcastRequest
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain, BlockMessage}
 
@@ -17,7 +17,7 @@ import scala.collection.immutable.{Seq, Set}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
-object Mining {
+object MiningActor {
 
   case class MineBlock(blockChain: BlockChain, messages: Seq[BlockMessage] )
 
@@ -26,10 +26,10 @@ object Mining {
   case class MineResult(block: Block)
 
   def props( peerToPeer: ActorRef )(implicit ec: ExecutionContext)=
-    Props( new Mining(peerToPeer))
+    Props( new MiningActor(peerToPeer))
 }
 
-class Mining( peerToPeer: ActorRef )(implicit ec: ExecutionContext) extends Actor {
+class MiningActor(peerToPeer: ActorRef )(implicit ec: ExecutionContext) extends Actor {
 
   implicit val timeout = Timeout(Duration(5, TimeUnit.SECONDS))
 
@@ -38,22 +38,11 @@ class Mining( peerToPeer: ActorRef )(implicit ec: ExecutionContext) extends Acto
 
   def createWorker( factory: ActorRefFactory ): ActorRef = factory.actorOf(MiningWorker.props(peerToPeer))
 
-  val logger = Logger(classOf[Mining])
+  val logger = Logger(classOf[MiningActor])
 
   override def receive = LoggingReceive {
 
-    case BlockChainChanged(newBlockChain) =>
-      logger.debug("The blockchain has changed, stopping all miners.")
-      miners.foreach( _ ! PoisonPill )
-
-      messages = messages.filterNot( newBlockChain.contains(_))
-
-      if ( ! messages.isEmpty ) {
-        self ! MineBlock(newBlockChain, messages.to[Seq])
-      }
-
     case MineBlock(blockChain, requestMessages) =>
-
       logger.debug(s"Got mining request for ${requestMessages.size} messages with current blockchain index at ${blockChain.head.index}")
       val filtered = requestMessages.filterNot( blockChain.contains(_))
 
@@ -72,6 +61,15 @@ class Mining( peerToPeer: ActorRef )(implicit ec: ExecutionContext) extends Acto
         miningActor ! MiningWorker.MineBlock(blockChain, messages.to[Seq])
       } else logger.debug("Request contained no new messages, so not doing anything.")
 
+    case BlockChainChanged(newBlockChain) =>
+      logger.debug("The blockchain has changed, stopping all miners.")
+      miners.foreach( _ ! PoisonPill )
+
+      messages = messages.filterNot( newBlockChain.contains(_))
+
+      if ( ! messages.isEmpty ) {
+        self ! MineBlock(newBlockChain, messages.to[Seq])
+      }
 
     case Terminated(deadActor) =>
       miners -= deadActor

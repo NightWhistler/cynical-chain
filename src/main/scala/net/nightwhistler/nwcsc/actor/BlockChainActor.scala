@@ -39,12 +39,10 @@ class BlockChainActor( var blockChain: BlockChain, peerToPeer: ActorRef) extends
   override def receive = LoggingReceive {
     case QueryLatest => sender() ! NewBlock(blockChain.head)
     case QueryAll => sender() ! NewBlockChain(blockChain.blocks)
-
     case GetBlockChain => sender() ! CurrentBlockChain(blockChain)
 
     case NewBlock(block) => handleNewBlock(block)
     case NewBlockChain(blocks) => handleBlockChainResponse(blocks)
-
   }
 
   def handleNewBlock( block: Block ): Unit = {

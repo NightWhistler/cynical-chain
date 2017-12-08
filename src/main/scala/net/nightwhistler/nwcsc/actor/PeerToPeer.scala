@@ -9,7 +9,7 @@ import com.typesafe.scalalogging.Logger
 import net.nightwhistler.nwcsc.actor.PeerToPeer._
 import akka.pattern.pipe
 import net.nightwhistler.nwcsc.actor.BlockChainActor._
-import net.nightwhistler.nwcsc.actor.Mining.{BlockChainChanged, MineBlock, MineResult}
+import net.nightwhistler.nwcsc.actor.MiningActor.{BlockChainChanged, MineBlock, MineResult}
 import net.nightwhistler.nwcsc.blockchain.{Block, BlockChain}
 
 import scala.concurrent.ExecutionContext
@@ -42,7 +42,7 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
   implicit val executionContext = context.system.dispatcher
 
   val blockChainActor = context.actorOf(BlockChainActor.props(self))
-  val miningActor = context.actorOf(Mining.props(self))
+  val miningActor = context.actorOf(MiningActor.props(self))
 
   val logger: Logger = Logger(classOf[PeerToPeer])
   var peers: Set[ActorRef] = Set.empty
@@ -53,23 +53,7 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
 
   override def receive = LoggingReceive {
 
-    case blockchainMessage @ (GetBlockChain | QueryAll | QueryLatest | NewBlock(_) | NewBlockChain(_) ) =>
-      blockChainActor forward blockchainMessage
-
-    case BlockChainUpdated(blockChain) => miningActor ! BlockChainChanged(blockChain)
-
-    case AddMessages(messages) =>
-      (blockChainActor ? GetBlockChain).mapTo[CurrentBlockChain]
-        .map( chain => MineBlock(chain.blockChain, messages) ) pipeTo miningActor
-
-    case MineResult(block) =>
-      logger.debug(s"Received a valid block from the miner for index ${block.index}, adding it to the chain.")
-      //We don't remove the messages yet, not until they have been confirmed to be in the blockchain.
-      //The main blockchain may still reject the block!
-      blockChainActor ! NewBlock(block)
-
-    case BroadcastRequest(message) => broadcast(message)
-
+    //P2P messages
     case AddPeer(peerAddress) =>
       logger.debug(s"Got request to add peer ${peerAddress}")
       context.actorSelection(peerAddress).resolveOne().map( ResolvedPeer(_) ).pipeTo(self)
@@ -97,11 +81,14 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
         logger.debug(s"Peer list grew to size ${peers.size}")
       } else logger.debug("We already know this peer, discarding")
 
-    case Peers(peers) => peers.foreach( self ! AddPeer(_))
 
     case HandShake(fromNode) =>
       logger.debug(s"Received a handshake from $fromNode at ${sender().path.toStringWithoutAddress}")
       peers += sender()
+
+    case BroadcastRequest(message) => broadcast(message)
+
+    case Peers(peers) => peers.foreach( self ! AddPeer(_))
 
     case GetPeers => sender() ! Peers(peers.toSeq.map(_.path.toSerializationFormat))
 
@@ -109,6 +96,24 @@ class PeerToPeer(implicit ec: ExecutionContext) extends Actor {
       logger.debug(s"Peer ${actorRef} has terminated. Removing it from the list.")
       peers -= actorRef
 
+    //Mining messages
+    case AddMessages(messages) =>
+      (blockChainActor ? GetBlockChain).mapTo[CurrentBlockChain]
+        .map( chain => MineBlock(chain.blockChain, messages) ) pipeTo miningActor
+
+    case MineResult(block) =>
+      logger.debug(s"Received a valid block from the miner for index ${block.index}, adding it to the chain.")
+      //We don't remove the messages yet, not until they have been confirmed to be in the blockchain.
+      //The main blockchain may still reject the block!
+      blockChainActor ! NewBlock(block)
+
+    case BlockChainUpdated(blockChain) => miningActor ! BlockChainChanged(blockChain)
+
+    //Blockchain messages
+    case blockchainMessage @ (GetBlockChain | QueryAll | QueryLatest | NewBlock(_) | NewBlockChain(_) ) =>
+      blockChainActor forward blockchainMessage
+
   }
+
 
 }
