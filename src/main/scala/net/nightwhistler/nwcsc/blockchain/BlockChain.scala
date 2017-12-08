@@ -36,18 +36,6 @@ case class BlockChain private(head: Block, tail: Option[BlockChain], difficultyF
 
   val logger = Logger("BlockChain")
 
-  def blocks: List[Block] = foldLeft[List[Block]](Nil) {
-    case (list, block) => block :: list
-  }.reverse
-
-  def firstBlock: Block = foldLeft[Option[Block]](None) {
-    case (_, block) => Some(block)
-  }.get
-
-  def contains(blockMessage: BlockMessage) = foldLeft(false) {
-    case (b, block) => b || block.messages.contains(blockMessage)
-  }
-
   @tailrec
   final def foldLeft[A]( startValue: A )( op: (A, Block) => A ): A = {
     val currentResult = op(startValue, head)
@@ -55,6 +43,49 @@ case class BlockChain private(head: Block, tail: Option[BlockChain], difficultyF
       case None => currentResult
       case Some(chain) => chain.foldLeft(currentResult)(op)
     }
+  }
+
+  def blocks: List[Block] = foldLeft[List[Block]](Nil) {
+    case (list, block) => block :: list
+  }.reverse
+
+  def firstBlock: Block = foldLeft[Block](head) {
+    case (_, block) => block
+  }
+
+  def contains(blockMessage: BlockMessage) = foldLeft(false) {
+    case (b, block) => b || block.messages.contains(blockMessage)
+  }
+
+  def withBlocks(newBlocks: Seq[Block] ): Try[BlockChain] = newBlocks match {
+    case GenesisBlock :: tail => BlockChain(difficultyFunction, hashFunction).appendBlocks(tail)
+    case blocks :+ GenesisBlock => BlockChain(difficultyFunction, hashFunction).appendBlocks(blocks.reverse)
+    case _ => Failure(new IllegalArgumentException("New chain does not start or end with the GenesisBlock"))
+  }
+
+  def appendBlocks( newBlocks: Seq[Block] ): Try[BlockChain] = newBlocks.foldLeft(Try(this)) {
+    (blockChain, block) => blockChain.flatMap(chain => chain.addBlock(block))
+  }
+
+  def addBlock( block: Block ): Try[ BlockChain ] =
+    if (validBlock(block) ) Success( new BlockChain(block, Some(this), difficultyFunction, hashFunction ))
+    else Failure(new IllegalArgumentException("Invalid block added"))
+
+  def validBlock(newBlock: Block): Boolean = validBlock(newBlock, head)
+
+  private def validBlock(newBlock: Block, previousBlock: Block) =
+    previousBlock.index + 1 == newBlock.index &&
+    previousBlock.hash == newBlock.previousHash &&
+    previousBlock.timestamp <= newBlock.timestamp &&
+    (newBlock.timestamp - currentTime) < fiveMinutes &&
+    hashFunction(newBlock) == newBlock.hash &&
+    newBlock.hash < difficultyFunction(newBlock) &&
+    ! newBlock.messages.exists( contains(_) )
+
+  @tailrec
+  final def valid: Boolean = tail match {
+    case None => head == GenesisBlock
+    case Some(chain) => validBlock(head, chain.head) && chain.valid
   }
 
   def addMessage(data: String, foundBy: String = "", nonse: Long = 0 ): Try[BlockChain]
@@ -73,41 +104,7 @@ case class BlockChain private(head: Block, tail: Option[BlockChain], difficultyF
   }
 
   private def currentTime = System.currentTimeMillis() / 1000
-
-  def withBlocks(newBlocks: Seq[Block] ): Try[BlockChain] = newBlocks match {
-    case GenesisBlock :: tail => BlockChain(difficultyFunction, hashFunction).appendBlocks(tail)
-    case blocks :+ GenesisBlock => BlockChain(difficultyFunction, hashFunction).appendBlocks(blocks.reverse)
-    case _ => Failure(new IllegalArgumentException("New chain does not start or end with the GenesisBlock"))
-  }
-
-  def appendBlocks( newBlocks: Seq[Block] ): Try[BlockChain] = newBlocks.foldLeft(Try(this)) {
-    (blockChain, block) => blockChain.flatMap(chain => chain.addBlock(block))
-  }
-
-  def addBlock( block: Block ): Try[ BlockChain ] =
-    if (validBlock(block) ) Success( new BlockChain(block, Some(this), difficultyFunction, hashFunction ))
-    else Failure(new IllegalArgumentException("Invalid block added"))
-
-  def validBlock(newBlock: Block): Boolean = validBlock(newBlock, head)
-
   private val fiveMinutes = 300
-
-  private def validBlock(newBlock: Block, previousBlock: Block) =
-    previousBlock.index + 1 == newBlock.index &&
-    previousBlock.hash == newBlock.previousHash &&
-    previousBlock.timestamp <= newBlock.timestamp &&
-    (newBlock.timestamp - currentTime) < fiveMinutes &&
-    hashFunction(newBlock) == newBlock.hash &&
-    newBlock.hash < difficultyFunction(newBlock) &&
-    ! newBlock.messages.exists( contains(_) )
-
-  def valid: Boolean = validChain
-
-  @tailrec
-  private def validChain: Boolean = tail match {
-    case None => head == GenesisBlock
-    case Some(chain) => validBlock(head, chain.head) && chain.validChain
-  }
 
   override def toString: String = foldLeft(new StringBuilder("BlockChain(")) {
     case (builder, block) => builder.append(s", $block")
