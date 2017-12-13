@@ -59,7 +59,9 @@ class BlockChainActor( var blockChain: BlockChain, peerToPeer: ActorRef) extends
           peerToPeer ! BroadcastRequest(NewBlock(blockChain.latestBlock))
           peerToPeer ! BlockChainUpdated(blockChain)
 
-        case Failure(_) => logger.error("Refusing to add new block since it failed validation")
+        case Failure(_) =>
+          logger.info("Could not add the block to our chain, querying for full chain")
+          peer ! QueryAll
       }
     } else if ( block.index <= localLatestBlock.index ) {
       logger.debug("Block was not newer than our current latest, ignoring.")
