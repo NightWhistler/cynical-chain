@@ -16,7 +16,7 @@ object GenesisBlock extends Block(0, BigInt(0), 1497359352, "Genesis",
   BigInt("8bf633d2c8025c2fedea4ecdf68378584d6c0e545736fa95a0f2fa094182912a", 16))
 
 case class Block(index: Long, previousHash: BigInt, timestamp: Long, foundBy: String,
-                 messages: Seq[BlockMessage], nonse: Long, hash: BigInt)
+                 messages: Seq[BlockMessage], nonce: Long, hash: BigInt)
 
 object BlockChain {
 
@@ -90,18 +90,18 @@ case class BlockChain private(head: Block, tail: Option[BlockChain], difficultyF
     case Some(chain) => validBlock(head, chain.head) && chain.valid
   }
 
-  def addMessage(data: String, foundBy: String = "", nonse: Long = 0 ): Try[BlockChain]
-    = addMessages(Seq(BlockMessage(data)), foundBy, nonse)
+  def addMessage(data: String, foundBy: String = "", nonce: Long = 0 ): Try[BlockChain]
+    = addMessages(Seq(BlockMessage(data)), foundBy, nonce)
 
-  def addMessages(blockMessages: Seq[BlockMessage], foundBy: String, nonse: Long): Try[BlockChain] =
-    addBlock( generateNextBlock(blockMessages, foundBy, nonse) )
+  def addMessages(blockMessages: Seq[BlockMessage], foundBy: String, nonce: Long): Try[BlockChain] =
+    addBlock( generateNextBlock(blockMessages, foundBy, nonce) )
 
-  def generateNextBlock(blockMessages: Seq[BlockMessage], foundBy: String, nonse: Long): Block = {
+  def generateNextBlock(blockMessages: Seq[BlockMessage], foundBy: String, nonce: Long): Block = {
     val previousBlock = head
     val nextIndex = previousBlock.index + 1
     val nextTimestamp = currentTime
 
-    val tempBlock = Block(nextIndex, previousBlock.hash, nextTimestamp, foundBy, blockMessages, nonse, 0)
+    val tempBlock = Block(nextIndex, previousBlock.hash, nextTimestamp, foundBy, blockMessages, nonce, 0)
     tempBlock.copy( hash = hashFunction(tempBlock) )
   }
 

@@ -62,7 +62,7 @@ function loadBlocks(nodeNum) {
             var blockHash = block.hash.substring(0,7);
             var prevHash = block.previousHash.substring(0,7);
 
-            dot += blockName(i) + "[label=\" { index: " + block.index + "| foundBy: " + block.foundBy + " | nonse: " + block.nonse + "} | { prev-hash: " + prevHash + " |  hash: " + blockHash + "} | timestamp: " + block.timestamp + "| " + messages(block) + "\";fillcolor=" + colourMapping[block.foundBy] +"];\n"
+            dot += blockName(i) + "[label=\" { index: " + block.index + "| foundBy: " + block.foundBy + " | nonce: " + block.nonce + "} | { prev-hash: " + prevHash + " |  hash: " + blockHash + "} | timestamp: " + block.timestamp + "| " + messages(block) + "\";fillcolor=" + colourMapping[block.foundBy] +"];\n"
 
             if ( i < blocks.length -1 ) {
                 dot += blockName(i+1) + " -> " + blockName(i) + ";\n";
