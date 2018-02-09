@@ -3,7 +3,7 @@ Cynical block-chain implementation using Akka and Scala
 
 The name is a bit on the pun, since I forked this project off my previous naivechain-scala project.
 
-There were naivechain is meant to be a simple as possible, cynical-chain tries to actually be useful by adding proof-of-work.
+Where naivechain is meant to be a simple as possible, cynical-chain tries to actually be useful by adding proof-of-work.
 This also means the code is more elaborate and tries to follow Scala best-practises.
 
 It uses Akka and Akka-http. Peer to peer communication between nodes is straight akka remoting, and akka-http is used for a simple rest interface.
